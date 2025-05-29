@@ -2,23 +2,43 @@ import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/user.dart';
 import '../models/post.dart';
+import '../models/chat.dart';
+import '../models/message.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
+import '../providers/auth_provider.dart';
+import 'package:provider/provider.dart';
+import 'package:flutter/foundation.dart';
+import '../main.dart';
+import 'dart:convert';
+import 'storage_service.dart';
 
 class ApiService {
-  final Dio _dio = Dio();
+  final Dio _dio;
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
-  static const String baseUrl = 'http://localhost:3000/api'; // Update with your backend URL
+  final StorageService _storageService;
+  final String baseUrl = 'http://localhost:3000/api';
 
-  ApiService() {
+  ApiService() : _dio = Dio(), _storageService = StorageService() {
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
         final token = await _storage.read(key: 'token');
         if (token != null) {
           options.headers['Authorization'] = 'Bearer $token';
-          print('Adding token to request: Bearer $token'); // Debug log
+          print('Adding token to request: ${options.headers['Authorization']}');
         }
         return handler.next(options);
+      },
+      onResponse: (response, handler) {
+        print('API Request/Response: *** Response ***');
+        print('API Request/Response: uri: ${response.requestOptions.uri}');
+        print('API Request/Response: statusCode: ${response.statusCode}');
+        print('API Request/Response: headers:');
+        print('API Request/Response: ${response.headers}');
+        print('API Request/Response: Response Text:');
+        print('API Request/Response: ${response.data}');
+        print('API Request/Response: ');
+        return handler.next(response);
       },
       onError: (error, handler) async {
         if (error.response?.statusCode == 401 || error.response?.statusCode == 403) {
@@ -29,141 +49,218 @@ class ApiService {
         return handler.next(error);
       },
     ));
+
+    _dio.interceptors.add(LogInterceptor(
+      requestBody: true,
+      responseBody: true,
+      logPrint: (object) {
+        if (kDebugMode) {
+          print('API Request/Response: $object');
+        }
+      },
+    ));
   }
 
   // Auth Methods
-  Future<String> login(String email, String password) async {
+  Future<Map<String, dynamic>> login(String email, String password) async {
     try {
-      print('Attempting login with email: $email');
-      
+      if (kDebugMode) {
+        print('Logging in with email: $email');
+      }
+
       final response = await _dio.post(
         '$baseUrl/auth/login',
         data: {
           'email': email,
           'password': password,
         },
-        options: Options(
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-          validateStatus: (status) => status! < 500,
-        ),
       );
-      
-      print('Login response status: ${response.statusCode}');
-      print('Login response data: ${response.data}');
-      
-      if (response.statusCode == 401) {
+
+      if (kDebugMode) {
+        print('Login response: ${response.data}');
+      }
+
+      if (response.data == null) {
+        throw Exception('Invalid response from server');
+      }
+
+      if (!response.data['success']) {
+        throw Exception(response.data['error']?['message'] ?? 'Login failed');
+      }
+
+      if (response.data['data'] == null) {
+        throw Exception('Invalid login data in response');
+      }
+
+      return {
+        'user': response.data['data']['user'],
+        'token': response.data['data']['token'],
+      };
+    } on DioException catch (e) {
+      if (kDebugMode) {
+        print('DioException in login: ${e.message}');
+        print('Response data: ${e.response?.data}');
+        print('Response status: ${e.response?.statusCode}');
+      }
+
+      if (e.response?.statusCode == 401) {
         throw Exception('Invalid email or password');
       }
-      
-      if (response.statusCode != 200) {
-        if (response.data is Map<String, dynamic> && response.data['error'] != null) {
-          final error = response.data['error'];
-          throw Exception('${error['code']}: ${error['message']}');
-        }
-        throw Exception('Login failed with status code: ${response.statusCode}');
-      }
-      
-      if (response.data == null || 
-          response.data['data'] == null || 
-          response.data['data']['token'] == null) {
-        throw Exception('Invalid response format from server');
-      }
-      
-      final token = response.data['data']['token'];
-      await _storage.write(key: 'token', value: token);
-      print('Login successful, token saved: $token'); // Debug log
-      
-      return token;
+      throw Exception(e.response?.data?['error']?['message'] ?? 'Login failed: ${e.message}');
     } catch (e) {
-      print('Login error: $e');
-      if (e is DioException) {
-        final response = e.response;
-        if (response != null) {
-          print('Dio error response data: ${response.data}');
-          print('Dio error response status: ${response.statusCode}');
-          print('Dio error response headers: ${response.headers}');
-          
-          if (response.data is Map<String, dynamic>) {
-            if (response.data['error'] != null) {
-              final error = response.data['error'];
-              throw Exception('${error['code']}: ${error['message']}');
-            }
-          }
-        }
+      if (kDebugMode) {
+        print('Error in login: $e');
       }
-      rethrow;
+      throw Exception('Login failed: ${e.toString()}');
     }
   }
 
-  Future<void> register(String username, String email, String password) async {
+  Future<Map<String, dynamic>> register(String username, String email, String password) async {
     try {
-      final response = await _dio.post('$baseUrl/auth/register', data: {
-        'username': username,
-        'email': email,
-        'password': password,
-        'fullName': username, // Using username as fullName for now
-        'bio': '',
-        'motorcycleInfo': {
-          'brand': '',
-          'model': '',
-          'year': null
-        }
-      });
-      
-      // After successful registration, automatically log in
-      if (response.data['data']?['token']) {
-        await _storage.write(key: 'token', value: response.data['data']['token']);
+      if (kDebugMode) {
+        print('Registering with email: $email, username: $username');
       }
+
+      final response = await _dio.post(
+        '$baseUrl/auth/register',
+        data: {
+          'username': username,
+          'email': email,
+          'password': password,
+        },
+      );
+
+      if (kDebugMode) {
+        print('Register response: ${response.data}');
+      }
+
+      if (response.data == null) {
+        throw Exception('Invalid response from server');
+      }
+
+      if (!response.data['success']) {
+        throw Exception(response.data['error']?['message'] ?? 'Registration failed');
+      }
+
+      if (response.data['data'] == null) {
+        throw Exception('Invalid registration data in response');
+      }
+
+      return {
+        'user': response.data['data']['user'],
+        'token': response.data['data']['token'],
+      };
+    } on DioException catch (e) {
+      if (kDebugMode) {
+        print('DioException in register: ${e.message}');
+        print('Response data: ${e.response?.data}');
+        print('Response status: ${e.response?.statusCode}');
+      }
+
+      if (e.response?.statusCode == 409) {
+        throw Exception('Email or username already exists');
+      }
+      throw Exception(e.response?.data?['error']?['message'] ?? 'Registration failed: ${e.message}');
     } catch (e) {
-      throw _handleError(e);
+      if (kDebugMode) {
+        print('Error in register: $e');
+      }
+      throw Exception('Registration failed: ${e.toString()}');
     }
   }
 
   Future<void> logout() async {
-    await _storage.delete(key: 'token');
+    try {
+      final token = Provider.of<AuthProvider>(navigatorKey.currentContext!, listen: false).token;
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+      _addTokenToRequest(token);
+
+      if (kDebugMode) {
+        print('Logging out');
+      }
+
+      final response = await _dio.post('$baseUrl/auth/logout');
+
+      if (kDebugMode) {
+        print('Logout response: ${response.data}');
+      }
+
+      if (response.data == null) {
+        throw Exception('Invalid response from server');
+      }
+
+      if (!response.data['success']) {
+        throw Exception(response.data['error']?['message'] ?? 'Logout failed');
+      }
+    } on DioException catch (e) {
+      if (kDebugMode) {
+        print('DioException in logout: ${e.message}');
+        print('Response data: ${e.response?.data}');
+        print('Response status: ${e.response?.statusCode}');
+      }
+
+      if (e.response?.statusCode == 401) {
+        throw Exception('Unauthorized: Please login again');
+      }
+      throw Exception(e.response?.data?['error']?['message'] ?? 'Logout failed: ${e.message}');
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error in logout: $e');
+      }
+      throw Exception('Logout failed: ${e.toString()}');
+    }
   }
 
   // User Methods
   Future<User> getCurrentUser() async {
     try {
-      final token = await _storage.read(key: 'token');
+      final token = Provider.of<AuthProvider>(navigatorKey.currentContext!, listen: false).token;
       if (token == null) {
-        throw Exception('No token found');
+        throw Exception('No authentication token found');
       }
-      
+      _addTokenToRequest(token);
+
+      if (kDebugMode) {
+        print('Getting current user');
+      }
+
       final response = await _dio.get('$baseUrl/auth/me');
+
+      if (kDebugMode) {
+        print('Get current user response: ${response.data}');
+      }
+
       if (response.data == null) {
-        throw Exception('No data received from server');
+        throw Exception('Invalid response from server');
       }
-      
-      final userData = response.data['data']['user'];
-      
-      // Fix profile picture URL
-      if (userData['profilePicture'] != null) {
-        // Convert Windows-style path to URL format
-        userData['profilePicture'] = userData['profilePicture'].replaceAll('\\', '/');
-        // Add base URL if it's a relative path
-        if (!userData['profilePicture'].startsWith('http')) {
-          // Remove /api from baseUrl for static file serving
-          final staticBaseUrl = baseUrl.replaceAll('/api', '');
-          userData['profilePicture'] = '$staticBaseUrl/${userData['profilePicture']}';
-        }
+
+      if (!response.data['success']) {
+        throw Exception(response.data['error']?['message'] ?? 'Failed to get current user');
       }
-      
-      return User.fromJson(userData);
+
+      if (response.data['data'] == null || response.data['data']['user'] == null) {
+        throw Exception('Invalid user data in response');
+      }
+
+      return User.fromJson(response.data['data']['user']);
+    } on DioException catch (e) {
+      if (kDebugMode) {
+        print('DioException in getCurrentUser: ${e.message}');
+        print('Response data: ${e.response?.data}');
+        print('Response status: ${e.response?.statusCode}');
+      }
+
+      if (e.response?.statusCode == 401) {
+        throw Exception('Unauthorized: Please login again');
+      }
+      throw Exception(e.response?.data?['error']?['message'] ?? 'Failed to get current user: ${e.message}');
     } catch (e) {
-      if (e is DioException) {
-        final response = e.response;
-        if (response != null) {
-          print('Error response data: ${response.data}');
-          print('Error response status: ${response.statusCode}');
-          print('Error response headers: ${response.headers}');
-        }
+      if (kDebugMode) {
+        print('Error in getCurrentUser: $e');
       }
-      throw _handleError(e);
+      throw Exception('Failed to get current user: ${e.toString()}');
     }
   }
 
@@ -198,91 +295,172 @@ class ApiService {
     }
   }
 
-  Future<void> updateProfile(Map<String, dynamic> data) async {
+  Future<User> updateProfile(String fullName, String bio) async {
     try {
-      print('Updating profile with data: $data'); // Debug log
-      
-      // Get current token for debugging
-      final token = await _storage.read(key: 'token');
-      print('Current token: $token'); // Debug log
-      
-      // First get current user to get the ID
-      final currentUser = await getCurrentUser();
-      print('Current user ID: ${currentUser.id}'); // Debug log
-      
-      // Handle profile image upload if present
-      if (data.containsKey('profileImage')) {
-        final imagePath = data['profileImage'];
-        print('Uploading profile picture: $imagePath'); // Debug log
+      final token = Provider.of<AuthProvider>(navigatorKey.currentContext!, listen: false).token;
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+      _addTokenToRequest(token);
+
+      if (kDebugMode) {
+        print('Updating profile with fullName: $fullName, bio: $bio');
+      }
+
+      final response = await _dio.put(
+        '$baseUrl/auth/profile',
+        data: {
+          'fullName': fullName,
+          'bio': bio,
+        },
+      );
+
+      if (kDebugMode) {
+        print('Update profile response: ${response.data}');
+      }
+
+      if (response.data == null) {
+        throw Exception('Invalid response from server');
+      }
+
+      if (!response.data['success']) {
+        throw Exception(response.data['error']?['message'] ?? 'Failed to update profile');
+      }
+
+      if (response.data['data'] == null || response.data['data']['user'] == null) {
+        throw Exception('Invalid user data in response');
+      }
+
+      return User.fromJson(response.data['data']['user']);
+    } on DioException catch (e) {
+      if (kDebugMode) {
+        print('DioException in updateProfile: ${e.message}');
+        print('Response data: ${e.response?.data}');
+        print('Response status: ${e.response?.statusCode}');
+      }
+
+      if (e.response?.statusCode == 401) {
+        throw Exception('Unauthorized: Please login again');
+      }
+      throw Exception(e.response?.data?['error']?['message'] ?? 'Failed to update profile: ${e.message}');
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error in updateProfile: $e');
+      }
+      throw Exception('Failed to update profile: ${e.toString()}');
+    }
+  }
+
+  Future<User> updateProfilePicture(String imagePath) async {
+    try {
+      final token = Provider.of<AuthProvider>(navigatorKey.currentContext!, listen: false).token;
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+      _addTokenToRequest(token);
+
+      if (kDebugMode) {
+        print('Updating profile picture: $imagePath');
+      }
+
+      // Handle web blob URLs
+      if (imagePath.startsWith('blob:')) {
+        // For web, we need to convert the blob URL to a File
+        final blobResponse = await http.get(Uri.parse(imagePath));
+        final bytes = blobResponse.bodyBytes;
         
-        // Convert blob URL to bytes
-        final response = await http.get(Uri.parse(imagePath));
-        final bytes = response.bodyBytes;
+        // Create a temporary file name
+        final fileName = 'profilePicture-${DateTime.now().millisecondsSinceEpoch}.jpg';
         
-        // Get content type from response headers
-        final contentType = response.headers['content-type'] ?? 'image/jpeg';
-        print('File content type: $contentType'); // Debug log
-        
+        // Create form data
         final formData = FormData.fromMap({
           'profilePicture': MultipartFile.fromBytes(
             bytes,
-            filename: 'profile_picture.jpg',
-            contentType: MediaType.parse(contentType),
+            filename: fileName,
+            contentType: MediaType('image', 'jpeg'),
           ),
         });
-        
-        final uploadResponse = await _dio.post(
-          '$baseUrl/users/${currentUser.id}/profile-picture',
+
+        final dioResponse = await _dio.put(
+          '$baseUrl/auth/profile/picture',
           data: formData,
           options: Options(
             headers: {
-              'Authorization': 'Bearer $token',
+              'Content-Type': 'multipart/form-data',
             },
-            validateStatus: (status) => status! < 500,
           ),
         );
-        print('Profile picture upload response: ${uploadResponse.data}'); // Debug log
-        data.remove('profileImage');
-      }
 
-      // Update other profile data
-      if (data.isNotEmpty) {
-        print('Sending update request with data: $data'); // Debug log
-        final response = await _dio.put(
-          '$baseUrl/users/${currentUser.id}',
-          data: data,
+        if (kDebugMode) {
+          print('Update profile picture response: ${dioResponse.data}');
+        }
+
+        if (dioResponse.data == null) {
+          throw Exception('Invalid response from server');
+        }
+
+        if (!dioResponse.data['success']) {
+          throw Exception(dioResponse.data['error']?['message'] ?? 'Failed to update profile picture');
+        }
+
+        if (dioResponse.data['data'] == null || dioResponse.data['data']['user'] == null) {
+          throw Exception('Invalid user data in response');
+        }
+
+        return User.fromJson(dioResponse.data['data']['user']);
+      } else {
+        // For mobile, use the file path directly
+        final formData = FormData.fromMap({
+          'profilePicture': await MultipartFile.fromFile(
+            imagePath,
+            filename: 'profilePicture-${DateTime.now().millisecondsSinceEpoch}.jpg',
+          ),
+        });
+
+        final dioResponse = await _dio.put(
+          '$baseUrl/auth/profile/picture',
+          data: formData,
           options: Options(
             headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-              'Authorization': 'Bearer $token',
+              'Content-Type': 'multipart/form-data',
             },
-            validateStatus: (status) => status! < 500,
           ),
         );
-        
-        print('Profile update response status: ${response.statusCode}'); // Debug log
-        print('Profile update response: ${response.data}'); // Debug log
-        
-        if (response.statusCode != 200) {
-          throw Exception(response.data['error']?['message'] ?? 'Failed to update profile');
+
+        if (kDebugMode) {
+          print('Update profile picture response: ${dioResponse.data}');
         }
-        
-        // Reload user data after successful update
-        await getCurrentUser();
+
+        if (dioResponse.data == null) {
+          throw Exception('Invalid response from server');
+        }
+
+        if (!dioResponse.data['success']) {
+          throw Exception(dioResponse.data['error']?['message'] ?? 'Failed to update profile picture');
+        }
+
+        if (dioResponse.data['data'] == null || dioResponse.data['data']['user'] == null) {
+          throw Exception('Invalid user data in response');
+        }
+
+        return User.fromJson(dioResponse.data['data']['user']);
       }
+    } on DioException catch (e) {
+      if (kDebugMode) {
+        print('DioException in updateProfilePicture: ${e.message}');
+        print('Response data: ${e.response?.data}');
+        print('Response status: ${e.response?.statusCode}');
+      }
+
+      if (e.response?.statusCode == 401) {
+        throw Exception('Unauthorized: Please login again');
+      }
+      throw Exception(e.response?.data?['error']?['message'] ?? 'Failed to update profile picture: ${e.message}');
     } catch (e) {
-      print('Error updating profile: $e'); // Debug log
-      if (e is DioException) {
-        final response = e.response;
-        if (response != null) {
-          print('Error response data: ${response.data}'); // Debug log
-          print('Error response headers: ${response.headers}'); // Debug log
-          print('Error response status: ${response.statusCode}'); // Debug log
-          throw Exception(response.data['error']?['message'] ?? 'Failed to update profile');
-        }
+      if (kDebugMode) {
+        print('Error in updateProfilePicture: $e');
       }
-      throw Exception('Failed to update profile');
+      throw Exception('Failed to update profile picture: ${e.toString()}');
     }
   }
 
@@ -437,5 +615,425 @@ class ApiService {
       }
       rethrow;
     }
+  }
+
+  // Chat methods
+  Future<List<Chat>> getChats() async {
+    try {
+      final token = Provider.of<AuthProvider>(navigatorKey.currentContext!, listen: false).token;
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+      _addTokenToRequest(token);
+
+      if (kDebugMode) {
+        print('Fetching chats');
+      }
+
+      final response = await _dio.get('$baseUrl/chats');
+
+      if (kDebugMode) {
+        print('Chats response: ${response.data}');
+      }
+
+      if (response.data == null) {
+        throw Exception('Invalid response from server');
+      }
+
+      if (!response.data['success']) {
+        throw Exception(response.data['error']?['message'] ?? 'Failed to fetch chats');
+      }
+
+      if (response.data['data'] == null || response.data['data']['conversations'] == null) {
+        throw Exception('Invalid chats data in response');
+      }
+
+      final currentUser = Provider.of<AuthProvider>(navigatorKey.currentContext!, listen: false).currentUser;
+      if (currentUser == null) {
+        throw Exception('No current user found');
+      }
+
+      final List<dynamic> chatsJson = response.data['data']['conversations'];
+      return chatsJson.map((json) {
+        // Add currentUserId to each chat JSON
+        json['currentUserId'] = currentUser.id;
+        return Chat.fromJson(json);
+      }).toList();
+    } on DioException catch (e) {
+      if (kDebugMode) {
+        print('DioException in getChats: ${e.message}');
+        print('Response data: ${e.response?.data}');
+        print('Response status: ${e.response?.statusCode}');
+      }
+
+      if (e.response?.statusCode == 401) {
+        throw Exception('Unauthorized: Please login again');
+      }
+      throw Exception(e.response?.data?['error']?['message'] ?? 'Failed to fetch chats: ${e.message}');
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error in getChats: $e');
+      }
+      throw Exception('Failed to fetch chats: ${e.toString()}');
+    }
+  }
+
+  Future<List<Message>> getChatMessages(String chatId) async {
+    try {
+      final token = Provider.of<AuthProvider>(navigatorKey.currentContext!, listen: false).token;
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+      _addTokenToRequest(token);
+
+      if (kDebugMode) {
+        print('Fetching messages for chat: $chatId');
+      }
+
+      final response = await _dio.get('$baseUrl/chats/$chatId/messages');
+
+      if (kDebugMode) {
+        print('Messages response: ${response.data}');
+      }
+
+      if (response.data == null) {
+        throw Exception('Invalid response from server');
+      }
+
+      if (!response.data['success']) {
+        throw Exception(response.data['error']?['message'] ?? 'Failed to fetch messages');
+      }
+
+      if (response.data['data'] == null) {
+        return []; // Return empty list if no messages
+      }
+
+      if (response.data['data']['messages'] == null) {
+        return []; // Return empty list if messages array is null
+      }
+
+      final List<dynamic> messagesJson = response.data['data']['messages'];
+      
+      if (kDebugMode) {
+        print('Parsing ${messagesJson.length} messages');
+      }
+
+      return messagesJson.map((json) => Message.fromJson(json)).toList();
+    } on DioException catch (e) {
+      if (kDebugMode) {
+        print('DioException in getChatMessages: ${e.message}');
+        print('Response data: ${e.response?.data}');
+        print('Response status: ${e.response?.statusCode}');
+      }
+
+      if (e.response?.statusCode == 401) {
+        throw Exception('Unauthorized: Please login again');
+      }
+      throw Exception(e.response?.data?['error']?['message'] ?? 'Failed to fetch messages: ${e.message}');
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error in getChatMessages: $e');
+      }
+      throw Exception('Failed to fetch messages: ${e.toString()}');
+    }
+  }
+
+  Future<Message> sendMessage(String chatId, String content, MessageType type) async {
+    try {
+      final token = Provider.of<AuthProvider>(navigatorKey.currentContext!, listen: false).token;
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+      _addTokenToRequest(token);
+
+      if (kDebugMode) {
+        print('Sending message to chat: $chatId');
+        print('Message content: $content');
+        print('Message type: $type');
+      }
+
+      final response = await _dio.post(
+        '$baseUrl/chats/$chatId/messages',
+        data: {
+          'content': content,
+          'type': type.toString().split('.').last,
+        },
+      );
+
+      if (kDebugMode) {
+        print('Send message response: ${response.data}');
+      }
+
+      if (response.data == null) {
+        throw Exception('Invalid response from server');
+      }
+
+      if (!response.data['success']) {
+        throw Exception(response.data['error']?['message'] ?? 'Failed to send message');
+      }
+
+      if (response.data['data'] == null || response.data['data']['message'] == null) {
+        throw Exception('Invalid message data in response');
+      }
+
+      return Message.fromJson(response.data['data']['message']);
+    } on DioException catch (e) {
+      if (kDebugMode) {
+        print('DioException in sendMessage: ${e.message}');
+        print('Response data: ${e.response?.data}');
+        print('Response status: ${e.response?.statusCode}');
+      }
+
+      if (e.response?.statusCode == 401) {
+        throw Exception('Unauthorized: Please login again');
+      }
+      throw Exception(e.response?.data?['error']?['message'] ?? 'Failed to send message: ${e.message}');
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error in sendMessage: $e');
+      }
+      throw Exception('Failed to send message: ${e.toString()}');
+    }
+  }
+
+  Future<void> markChatAsRead(String chatId) async {
+    try {
+      final token = Provider.of<AuthProvider>(navigatorKey.currentContext!, listen: false).token;
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+      _addTokenToRequest(token);
+
+      if (kDebugMode) {
+        print('Marking chat as read: $chatId');
+      }
+
+      final response = await _dio.put('$baseUrl/chats/$chatId/read');
+
+      if (kDebugMode) {
+        print('Mark as read response: ${response.data}');
+      }
+
+      if (response.data == null) {
+        throw Exception('Invalid response from server');
+      }
+
+      if (!response.data['success']) {
+        throw Exception(response.data['error']?['message'] ?? 'Failed to mark chat as read');
+      }
+    } on DioException catch (e) {
+      if (kDebugMode) {
+        print('DioException in markChatAsRead: ${e.message}');
+        print('Response data: ${e.response?.data}');
+        print('Response status: ${e.response?.statusCode}');
+      }
+
+      if (e.response?.statusCode == 401) {
+        throw Exception('Unauthorized: Please login again');
+      }
+      throw Exception(e.response?.data?['error']?['message'] ?? 'Failed to mark chat as read: ${e.message}');
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error in markChatAsRead: $e');
+      }
+      throw Exception('Failed to mark chat as read: ${e.toString()}');
+    }
+  }
+
+  Future<void> deleteMessage(String chatId, String messageId, bool deleteForEveryone) async {
+    try {
+      final token = Provider.of<AuthProvider>(navigatorKey.currentContext!, listen: false).token;
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+      _addTokenToRequest(token);
+
+      if (kDebugMode) {
+        print('Deleting message: $messageId from chat: $chatId');
+        print('Delete for everyone: $deleteForEveryone');
+      }
+
+      final response = await _dio.delete(
+        '$baseUrl/chats/$chatId/messages/$messageId',
+        queryParameters: {'deleteForEveryone': deleteForEveryone},
+      );
+
+      if (kDebugMode) {
+        print('Delete message response: ${response.data}');
+      }
+
+      if (response.data == null) {
+        throw Exception('Invalid response from server');
+      }
+
+      if (!response.data['success']) {
+        throw Exception(response.data['error']?['message'] ?? 'Failed to delete message');
+      }
+    } on DioException catch (e) {
+      if (kDebugMode) {
+        print('DioException in deleteMessage: ${e.message}');
+        print('Response data: ${e.response?.data}');
+        print('Response status: ${e.response?.statusCode}');
+      }
+
+      if (e.response?.statusCode == 401) {
+        throw Exception('Unauthorized: Please login again');
+      }
+      throw Exception(e.response?.data?['error']?['message'] ?? 'Failed to delete message: ${e.message}');
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error in deleteMessage: $e');
+      }
+      throw Exception('Failed to delete message: ${e.toString()}');
+    }
+  }
+
+  Future<void> reactToMessage(String chatId, String messageId, String reaction) async {
+    try {
+      final response = await _dio.post(
+        '$baseUrl/chats/$chatId/messages/$messageId/reactions',
+        data: {'reaction': reaction},
+      );
+
+      if (response.data == null) {
+        throw Exception('Invalid response from server');
+      }
+
+      if (!response.data['success']) {
+        throw Exception(response.data['error']?['message'] ?? 'Failed to react to message');
+      }
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        throw Exception('Unauthorized: Please login again');
+      }
+      throw Exception(e.response?.data?['error']?['message'] ?? 'Failed to react to message');
+    } catch (e) {
+      throw Exception('Failed to react to message: ${e.toString()}');
+    }
+  }
+
+  Future<void> muteChat(String chatId, bool mute) async {
+    try {
+      final response = await _dio.put(
+        '$baseUrl/chats/$chatId/mute',
+        data: {'mute': mute},
+      );
+      if (response.data == null || !response.data['success']) {
+        throw Exception(response.data['error']?['message'] ?? 'Failed to mute chat');
+      }
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  Future<Chat> getOrCreateChat(String userId) async {
+    try {
+      final token = Provider.of<AuthProvider>(navigatorKey.currentContext!, listen: false).token;
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+      _addTokenToRequest(token);
+
+      if (kDebugMode) {
+        print('Creating/Getting chat with user: $userId');
+      }
+
+      final response = await _dio.post(
+        '$baseUrl/chats',
+        data: {'userId': userId},
+      );
+
+      if (kDebugMode) {
+        print('Chat response: ${response.data}');
+      }
+
+      if (response.data == null) {
+        throw Exception('Invalid response from server');
+      }
+
+      if (!response.data['success']) {
+        throw Exception(response.data['error']?['message'] ?? 'Failed to create chat');
+      }
+
+      if (response.data['data'] == null || response.data['data']['conversation'] == null) {
+        throw Exception('Invalid chat data in response');
+      }
+
+      final currentUser = Provider.of<AuthProvider>(navigatorKey.currentContext!, listen: false).currentUser;
+      if (currentUser == null) {
+        throw Exception('No current user found');
+      }
+
+      final chatJson = response.data['data']['conversation'];
+      chatJson['currentUserId'] = currentUser.id;
+      return Chat.fromJson(chatJson);
+    } on DioException catch (e) {
+      if (kDebugMode) {
+        print('DioException in getOrCreateChat: ${e.message}');
+        print('Response data: ${e.response?.data}');
+        print('Response status: ${e.response?.statusCode}');
+      }
+
+      if (e.response?.statusCode == 401) {
+        throw Exception('Unauthorized: Please login again');
+      }
+      throw Exception(e.response?.data?['error']?['message'] ?? 'Failed to create chat: ${e.message}');
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error in getOrCreateChat: $e');
+      }
+      throw Exception('Failed to create chat: ${e.toString()}');
+    }
+  }
+
+  Future<void> deleteChat(String chatId) async {
+    try {
+      final token = Provider.of<AuthProvider>(navigatorKey.currentContext!, listen: false).token;
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+      _addTokenToRequest(token);
+
+      if (kDebugMode) {
+        print('Deleting chat: $chatId');
+      }
+
+      final response = await _dio.delete('$baseUrl/chats/$chatId');
+
+      if (kDebugMode) {
+        print('Delete chat response: ${response.data}');
+      }
+
+      if (response.data == null) {
+        throw Exception('Invalid response from server');
+      }
+
+      if (!response.data['success']) {
+        throw Exception(response.data['error']?['message'] ?? 'Failed to delete chat');
+      }
+    } on DioException catch (e) {
+      if (kDebugMode) {
+        print('DioException in deleteChat: ${e.message}');
+        print('Response data: ${e.response?.data}');
+        print('Response status: ${e.response?.statusCode}');
+      }
+
+      if (e.response?.statusCode == 401) {
+        throw Exception('Unauthorized: Please login again');
+      }
+      throw Exception(e.response?.data?['error']?['message'] ?? 'Failed to delete chat: ${e.message}');
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error in deleteChat: $e');
+      }
+      throw Exception('Failed to delete chat: ${e.toString()}');
+    }
+  }
+
+  void _addTokenToRequest(String token) {
+    if (kDebugMode) {
+      print('Adding token to request: $token');
+    }
+    _dio.options.headers['Authorization'] = 'Bearer $token';
   }
 } 

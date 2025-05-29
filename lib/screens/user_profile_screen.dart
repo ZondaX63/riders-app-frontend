@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/user.dart';
 import '../services/api_service.dart';
+import 'chat_detail_screen.dart';
 
 class UserProfileScreen extends StatefulWidget {
   final String userId;
@@ -79,6 +80,36 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     }
   }
 
+  Future<void> _startChat() async {
+    if (_user == null) return;
+
+    try {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+
+      final chat = await _apiService.getOrCreateChat(_user!.id);
+      
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ChatDetailScreen(chat: chat),
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -110,6 +141,12 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(_user!.username),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.message),
+            onPressed: _isLoading ? null : _startChat,
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -194,14 +231,25 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               ],
             ),
             const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _toggleFollow,
-                child: _isLoading
-                    ? const CircularProgressIndicator()
-                    : Text(_isFollowing ? 'Unfollow' : 'Follow'),
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _toggleFollow,
+                    child: _isLoading
+                        ? const CircularProgressIndicator()
+                        : Text(_isFollowing ? 'Unfollow' : 'Follow'),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _isLoading ? null : _startChat,
+                    icon: const Icon(Icons.message),
+                    label: const Text('Message'),
+                  ),
+                ),
+              ],
             ),
           ],
         ),

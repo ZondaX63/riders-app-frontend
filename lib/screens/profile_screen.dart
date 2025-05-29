@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import '../providers/auth_provider.dart';
-import '../models/user.dart';
 import '../services/api_service.dart';
+
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -19,6 +19,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _yearController = TextEditingController();
   bool _isLoading = false;
   String? _error;
+
+  String _getProfilePictureUrl(String? profilePicture) {
+    if (profilePicture == null || profilePicture.isEmpty) {
+      return '';
+    }
+    // Convert backslashes to forward slashes and ensure proper URL format
+    final normalizedPath = profilePicture.replaceAll('\\', '/');
+    return 'http://localhost:3000/$normalizedPath';
+  }
 
   @override
   void initState() {
@@ -36,6 +45,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadUserData() async {
+    if (!mounted) return;
     final user = context.read<AuthProvider>().currentUser;
     if (user != null) {
       _bioController.text = user.bio ?? '';
@@ -54,21 +64,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
 
     try {
-      await context.read<AuthProvider>().updateProfile({
-        'bio': _bioController.text.trim(),
-      });
+      if (!mounted) return;
+      final user = context.read<AuthProvider>().currentUser;
+      if (user == null) throw Exception('User not found');
       
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Bio updated successfully')),
-        );
-      }
+      final authProvider = context.read<AuthProvider>();
+      await authProvider.updateProfile(
+        user.fullName,
+        _bioController.text.trim(),
+      );
+      
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Bio updated successfully')),
+      );
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = e.toString();
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+      });
     } finally {
       if (mounted) {
         setState(() {
@@ -85,32 +99,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
 
     try {
-      final updateData = {
-        'motorcycleInfo': {
-          'brand': _brandController.text.trim(),
-          'model': _modelController.text.trim(),
-          'year': _yearController.text.trim().isNotEmpty 
-              ? int.tryParse(_yearController.text.trim()) 
-              : null,
-        },
-      };
+      if (!mounted) return;
+      final user = context.read<AuthProvider>().currentUser;
+      if (user == null) throw Exception('User not found');
 
-      print('Updating motorcycle info with data: $updateData');
-      await context.read<AuthProvider>().updateProfile(updateData);
+      final authProvider = context.read<AuthProvider>();
+      await authProvider.updateProfile(
+        user.fullName,
+        user.bio ?? '',
+      );
       
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Motorcycle info updated successfully')),
-        );
-        await context.read<AuthProvider>().checkAuthStatus();
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Motorcycle info updated successfully')),
+      );
+      await authProvider.checkAuthStatus();
     } catch (e) {
       print('Error updating motorcycle info: $e');
-      if (mounted) {
-        setState(() {
-          _error = e.toString();
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+      });
     } finally {
       if (mounted) {
         setState(() {
@@ -136,21 +145,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
       });
 
       try {
-        await context.read<AuthProvider>().updateProfile({
-          'profileImage': pickedFile.path,
-        });
+        if (!mounted) return;
+        final authProvider = context.read<AuthProvider>();
+        await authProvider.updateProfilePicture(pickedFile.path);
         
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Profile image updated successfully')),
-          );
-        }
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile image updated successfully')),
+        );
       } catch (e) {
-        if (mounted) {
-          setState(() {
-            _error = e.toString();
-          });
-        }
+        if (!mounted) return;
+        setState(() {
+          _error = e.toString();
+        });
       } finally {
         if (mounted) {
           setState(() {
@@ -168,16 +175,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return const Center(child: CircularProgressIndicator());
     }
 
+    final profilePictureUrl = _getProfilePictureUrl(user.profilePicture);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Profile'),
+        elevation: 0,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () async {
-              await context.read<AuthProvider>().logout();
+              final authProvider = Provider.of<AuthProvider>(context, listen: false);
+              await authProvider.logout();
               if (mounted) {
-                Navigator.of(context).pushReplacementNamed('/login');
+                Navigator.pushReplacementNamed(context, '/login');
               }
             },
           ),
@@ -193,10 +205,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 children: [
                   CircleAvatar(
                     radius: 50,
-                    backgroundImage: user.profilePicture != null && user.profilePicture!.isNotEmpty
-                        ? NetworkImage(user.profilePicture!)
+                    backgroundImage: profilePictureUrl.isNotEmpty
+                        ? NetworkImage(profilePictureUrl)
                         : null,
-                    child: user.profilePicture == null || user.profilePicture!.isEmpty
+                    child: profilePictureUrl.isEmpty
                         ? const Icon(Icons.person, size: 50)
                         : null,
                   ),

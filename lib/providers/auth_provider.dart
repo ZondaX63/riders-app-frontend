@@ -1,21 +1,42 @@
 import 'package:flutter/foundation.dart';
+import 'dart:convert';
 import '../models/user.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthProvider with ChangeNotifier {
   final ApiService _apiService;
   final StorageService _storage;
+  final SharedPreferences _prefs;
   User? _currentUser;
   bool _isLoading = false;
   String? _error;
+  String? _token;
 
-  AuthProvider(this._apiService, this._storage);
+  AuthProvider(this._apiService, this._storage, this._prefs) {
+    _loadUser();
+  }
 
   User? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get isAuthenticated => _currentUser != null;
+  String? get token => _token;
+
+  Future<void> _loadUser() async {
+    try {
+      final userJson = _prefs.getString('user');
+      final token = _prefs.getString('token');
+      if (userJson != null && token != null) {
+        _currentUser = User.fromJson(jsonDecode(userJson));
+        _token = token;
+        notifyListeners();
+      }
+    } catch (e) {
+      print('Error loading user: $e');
+    }
+  }
 
   Future<void> login(String email, String password) async {
     _isLoading = true;
@@ -23,8 +44,12 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final token = await _apiService.login(email, password);
-      await _storage.write(key: 'token', value: token);
+      final response = await _apiService.login(email, password);
+      _currentUser = User.fromJson(response['user']);
+      _token = response['token'];
+      await _prefs.setString('user', jsonEncode(_currentUser!.toJson()));
+      await _prefs.setString('token', _token!);
+      await _storage.write(key: 'token', value: _token!);
       await _loadCurrentUser();
     } catch (e) {
       _error = e.toString();
@@ -41,10 +66,15 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      await _apiService.register(username, email, password);
+      final response = await _apiService.register(username, email, password);
+      _currentUser = User.fromJson(response['user']);
+      _token = response['token'];
+      await _prefs.setString('user', jsonEncode(_currentUser!.toJson()));
+      await _prefs.setString('token', _token!);
       await login(email, password);
     } catch (e) {
       _error = e.toString();
+      rethrow;
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -53,13 +83,19 @@ class AuthProvider with ChangeNotifier {
 
   Future<void> logout() async {
     _isLoading = true;
+    _error = null;
     notifyListeners();
 
     try {
       await _apiService.logout();
       _currentUser = null;
+      _token = null;
+      await _prefs.remove('user');
+      await _prefs.remove('token');
+      await _storage.delete(key: 'token');
     } catch (e) {
       _error = e.toString();
+      rethrow;
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -68,23 +104,48 @@ class AuthProvider with ChangeNotifier {
 
   Future<void> _loadCurrentUser() async {
     try {
-      _currentUser = await _apiService.getCurrentUser();
+      final user = await _apiService.getCurrentUser();
+      _currentUser = user;
+      await _prefs.setString('user', jsonEncode(_currentUser!.toJson()));
+      notifyListeners();
     } catch (e) {
       _error = e.toString();
-      _currentUser = null;
+      rethrow;
     }
   }
 
-  Future<void> updateProfile(Map<String, dynamic> data) async {
+  Future<void> updateProfile(String fullName, String bio) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      await _apiService.updateProfile(data);
-      await _loadCurrentUser();
+      final updatedUser = await _apiService.updateProfile(fullName, bio);
+      _currentUser = updatedUser;
+      await _prefs.setString('user', jsonEncode(_currentUser!.toJson()));
+      notifyListeners();
     } catch (e) {
       _error = e.toString();
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> updateProfilePicture(String imagePath) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final updatedUser = await _apiService.updateProfilePicture(imagePath);
+      _currentUser = updatedUser;
+      await _prefs.setString('user', jsonEncode(_currentUser!.toJson()));
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      rethrow;
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -98,6 +159,7 @@ class AuthProvider with ChangeNotifier {
 
       final user = await _apiService.getCurrentUser();
       _currentUser = user;
+      await _prefs.setString('user', jsonEncode(_currentUser!.toJson()));
       return true;
     } catch (e) {
       print('Auth check error: $e');

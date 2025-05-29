@@ -4,9 +4,9 @@ import '../providers/auth_provider.dart';
 import '../models/post.dart';
 import '../services/api_service.dart';
 import 'create_post_screen.dart';
-import 'profile_screen.dart';
 import 'search_screen.dart';
 import 'notifications_screen.dart';
+import 'chat_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -16,73 +16,6 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _currentIndex = 0;
-  List<Post> _posts = [];
-  bool _isLoading = false;
-  String? _error;
-  late ApiService _apiService;
-
-  final List<Widget> _screens = [
-    const _HomeFeed(),
-    const SearchScreen(),
-    const CreatePostScreen(),
-    const NotificationsScreen(),
-    const ProfileScreen(),
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    _apiService = context.read<ApiService>();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: _screens[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.search),
-            label: 'Search',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.add_box_outlined),
-            label: 'Post',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.favorite_border),
-            label: 'Notifications',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HomeFeed extends StatefulWidget {
-  const _HomeFeed();
-
-  @override
-  State<_HomeFeed> createState() => _HomeFeedState();
-}
-
-class _HomeFeedState extends State<_HomeFeed> {
   List<Post> _posts = [];
   bool _isLoading = false;
   String? _error;
@@ -111,7 +44,7 @@ class _HomeFeedState extends State<_HomeFeed> {
         });
       }
     } catch (e) {
-      print('Error loading posts: $e'); // Debug log
+      print('Error loading posts: $e');
       if (mounted) {
         setState(() {
           _error = e.toString();
@@ -130,15 +63,27 @@ class _HomeFeedState extends State<_HomeFeed> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: const Text('MotoSocial'),
+        elevation: 0,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await context.read<AuthProvider>().logout();
-              if (mounted) {
-                Navigator.of(context).pushReplacementNamed('/login');
-              }
+            icon: const Icon(Icons.chat),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ChatScreen()),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.notifications),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+              );
             },
           ),
         ],
@@ -217,7 +162,7 @@ class _HomeFeedState extends State<_HomeFeed> {
                                           post.images[imageIndex],
                                           fit: BoxFit.cover,
                                           errorBuilder: (context, error, stackTrace) {
-                                            print('Error loading image: $error'); // Debug log
+                                            print('Error loading image: $error');
                                             return const Center(
                                               child: Icon(Icons.error),
                                             );

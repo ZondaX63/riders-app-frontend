@@ -11,6 +11,7 @@ class User {
   final String role;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final String? profileImage;
 
   User({
     required this.id,
@@ -25,15 +26,39 @@ class User {
     required this.role,
     required this.createdAt,
     required this.updatedAt,
+    this.profileImage,
   });
 
-  factory User.fromJson(Map<String, dynamic> json) {
+  factory User.empty() {
     return User(
-      id: json['id'] ?? json['_id'],
-      username: json['username'],
-      email: json['email'],
-      fullName: json['fullName'],
-      profilePicture: json['profilePicture'],
+      id: '',
+      username: '',
+      email: '',
+      fullName: '',
+      profilePicture: null,
+      bio: null,
+      motorcycleInfo: null,
+      followers: [],
+      following: [],
+      role: 'user',
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+      profileImage: null,
+    );
+  }
+
+  factory User.fromJson(Map<String, dynamic> json) {
+    String? profilePicture = json['profilePicture'];
+    if (profilePicture != null && profilePicture.isEmpty) {
+      profilePicture = null;
+    }
+
+    return User(
+      id: json['id'] ?? json['_id'] ?? '',
+      username: json['username'] ?? '',
+      email: json['email'] ?? '',
+      fullName: json['fullName'] ?? '',
+      profilePicture: profilePicture,
       bio: json['bio'],
       motorcycleInfo: json['motorcycleInfo'],
       followers: List<String>.from(json['followers'] ?? []),
@@ -41,6 +66,7 @@ class User {
       role: json['role'] ?? 'user',
       createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(),
       updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : DateTime.now(),
+      profileImage: json['profileImage'],
     );
   }
 
@@ -58,6 +84,7 @@ class User {
       'role': role,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
+      'profileImage': profileImage,
     };
   }
 
@@ -74,6 +101,7 @@ class User {
     String? role,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? profileImage,
   }) {
     return User(
       id: id ?? this.id,
@@ -88,6 +116,7 @@ class User {
       role: role ?? this.role,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      profileImage: profileImage ?? this.profileImage,
     );
   }
 } 
