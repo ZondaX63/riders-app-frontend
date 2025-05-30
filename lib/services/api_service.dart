@@ -4,22 +4,21 @@ import '../models/user.dart';
 import '../models/post.dart';
 import '../models/chat.dart';
 import '../models/message.dart';
+import '../models/comment.dart' as comment_model;
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import '../providers/auth_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/foundation.dart';
 import '../main.dart';
-import 'dart:convert';
-import 'storage_service.dart';
+import 'dart:io';
 
 class ApiService {
   final Dio _dio;
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
-  final StorageService _storageService;
   final String baseUrl = 'http://localhost:3000/api';
 
-  ApiService() : _dio = Dio(), _storageService = StorageService() {
+  ApiService() : _dio = Dio() {
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
         final token = await _storage.read(key: 'token');
@@ -277,7 +276,7 @@ class ApiService {
           // Add base URL if it's a relative path
           if (!userData['profilePicture'].startsWith('http')) {
             // Remove /api from baseUrl for static file serving
-            final staticBaseUrl = baseUrl.replaceAll('/api', '');
+            final staticBaseUrl = 'http://localhost:3000';
             userData['profilePicture'] = '$staticBaseUrl/${userData['profilePicture']}';
           }
         }
@@ -295,59 +294,44 @@ class ApiService {
     }
   }
 
-  Future<User> updateProfile(String fullName, String bio) async {
+  Future<User> updateProfile(String fullName, String bio, [Map<String, dynamic>? motorcycleInfo]) async {
     try {
-      final token = Provider.of<AuthProvider>(navigatorKey.currentContext!, listen: false).token;
-      if (token == null) {
-        throw Exception('No authentication token found');
-      }
-      _addTokenToRequest(token);
-
-      if (kDebugMode) {
-        print('Updating profile with fullName: $fullName, bio: $bio');
-      }
-
+      final token = await _getToken();
       final response = await _dio.put(
         '$baseUrl/auth/profile',
         data: {
           'fullName': fullName,
           'bio': bio,
+          if (motorcycleInfo != null) 'motorcycleInfo': motorcycleInfo,
         },
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        ),
       );
 
-      if (kDebugMode) {
-        print('Update profile response: ${response.data}');
-      }
-
-      if (response.data == null) {
-        throw Exception('Invalid response from server');
-      }
-
-      if (!response.data['success']) {
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        final userData = response.data['data']['user'];
+        // Fix profile picture URL
+        if (userData['profilePicture'] != null) {
+          // Convert Windows-style path to URL format
+          userData['profilePicture'] = userData['profilePicture'].replaceAll('\\', '/');
+          // Add base URL if it's a relative path
+          if (!userData['profilePicture'].startsWith('http')) {
+            // Remove /api from baseUrl for static file serving
+            final staticBaseUrl = 'http://localhost:3000';
+            userData['profilePicture'] = '$staticBaseUrl/${userData['profilePicture']}';
+          }
+        }
+        return User.fromJson(userData);
+      } else {
         throw Exception(response.data['error']?['message'] ?? 'Failed to update profile');
       }
-
-      if (response.data['data'] == null || response.data['data']['user'] == null) {
-        throw Exception('Invalid user data in response');
-      }
-
-      return User.fromJson(response.data['data']['user']);
-    } on DioException catch (e) {
-      if (kDebugMode) {
-        print('DioException in updateProfile: ${e.message}');
-        print('Response data: ${e.response?.data}');
-        print('Response status: ${e.response?.statusCode}');
-      }
-
-      if (e.response?.statusCode == 401) {
-        throw Exception('Unauthorized: Please login again');
-      }
-      throw Exception(e.response?.data?['error']?['message'] ?? 'Failed to update profile: ${e.message}');
     } catch (e) {
-      if (kDebugMode) {
-        print('Error in updateProfile: $e');
-      }
-      throw Exception('Failed to update profile: ${e.toString()}');
+      print('Error updating profile: $e');
+      rethrow;
     }
   }
 
@@ -407,7 +391,23 @@ class ApiService {
           throw Exception('Invalid user data in response');
         }
 
-        return User.fromJson(dioResponse.data['data']['user']);
+        final userData = dioResponse.data['data']['user'];
+        // Fix profile picture URL
+        if (userData['profilePicture'] != null) {
+          // Convert Windows-style path to URL format
+          userData['profilePicture'] = userData['profilePicture'].replaceAll('\\', '/');
+          // Add base URL if it's a relative path
+          if (!userData['profilePicture'].startsWith('http')) {
+            // Ensure the path starts with 'uploads/'
+            if (!userData['profilePicture'].startsWith('uploads/')) {
+              userData['profilePicture'] = 'uploads/${userData['profilePicture']}';
+            }
+            final staticBaseUrl = 'http://localhost:3000';
+            userData['profilePicture'] = '$staticBaseUrl/${userData['profilePicture']}';
+          }
+        }
+
+        return User.fromJson(userData);
       } else {
         // For mobile, use the file path directly
         final formData = FormData.fromMap({
@@ -443,7 +443,23 @@ class ApiService {
           throw Exception('Invalid user data in response');
         }
 
-        return User.fromJson(dioResponse.data['data']['user']);
+        final userData = dioResponse.data['data']['user'];
+        // Fix profile picture URL
+        if (userData['profilePicture'] != null) {
+          // Convert Windows-style path to URL format
+          userData['profilePicture'] = userData['profilePicture'].replaceAll('\\', '/');
+          // Add base URL if it's a relative path
+          if (!userData['profilePicture'].startsWith('http')) {
+            // Ensure the path starts with 'uploads/'
+            if (!userData['profilePicture'].startsWith('uploads/')) {
+              userData['profilePicture'] = 'uploads/${userData['profilePicture']}';
+            }
+            final staticBaseUrl = 'http://localhost:3000';
+            userData['profilePicture'] = '$staticBaseUrl/${userData['profilePicture']}';
+          }
+        }
+
+        return User.fromJson(userData);
       }
     } on DioException catch (e) {
       if (kDebugMode) {
@@ -513,13 +529,51 @@ class ApiService {
 
   Future<Post> createPost(String? content, List<String> images) async {
     try {
-      final formData = FormData.fromMap({
-        'content': content,
-        'images': images.map((path) => MultipartFile.fromFileSync(path)).toList(),
-      });
+      final formData = FormData();
+      formData.fields.add(MapEntry('description', content ?? ''));
+
+      // Handle images
+      for (var imagePath in images) {
+        if (kIsWeb) {
+          // Web platformu için
+          final response = await http.get(Uri.parse(imagePath));
+          formData.files.add(
+            MapEntry(
+              'images',
+              MultipartFile.fromBytes(
+                response.bodyBytes,
+                filename: imagePath.split('/').last,
+                contentType: MediaType('image', 'jpeg'),
+              ),
+            ),
+          );
+        } else {
+          // Mobil platform için
+          final bytes = await File(imagePath).readAsBytes();
+          formData.files.add(
+            MapEntry(
+              'images',
+              MultipartFile.fromBytes(
+                bytes,
+                filename: imagePath.split('/').last,
+              ),
+            ),
+          );
+        }
+      }
+      
       final response = await _dio.post('$baseUrl/posts', data: formData);
-      return Post.fromJson(response.data);
+      
+      if (response.data is Map<String, dynamic>) {
+        final data = response.data as Map<String, dynamic>;
+        if (data['success'] == true && data['data'] != null) {
+          return Post.fromJson(data['data']['post']);
+        }
+      }
+      
+      throw Exception('Invalid response format from server');
     } catch (e) {
+      print('Error in createPost: $e'); // Debug log
       throw _handleError(e);
     }
   }
@@ -697,18 +751,10 @@ class ApiService {
       }
 
       if (response.data == null) {
-        throw Exception('Invalid response from server');
-      }
-
-      if (!response.data['success']) {
-        throw Exception(response.data['error']?['message'] ?? 'Failed to fetch messages');
-      }
-
-      if (response.data['data'] == null) {
         return []; // Return empty list if no messages
       }
 
-      if (response.data['data']['messages'] == null) {
+      if (response.data['data'] == null) {
         return []; // Return empty list if messages array is null
       }
 
@@ -1035,5 +1081,85 @@ class ApiService {
       print('Adding token to request: $token');
     }
     _dio.options.headers['Authorization'] = 'Bearer $token';
+  }
+
+  Future<String> _getToken() async {
+    final token = await _storage.read(key: 'token');
+    if (token == null) {
+      throw Exception('No authentication token found');
+    }
+    return token;
+  }
+
+  Future<List<comment_model.Comment>> getComments(String postId) async {
+    try {
+      final response = await _dio.get('$baseUrl/posts/$postId');
+      
+      if (response.data == null) {
+        throw Exception('Invalid response from server');
+      }
+
+      if (!response.data['success']) {
+        throw Exception(response.data['error']?['message'] ?? 'Failed to get post');
+      }
+
+      if (response.data['data'] == null || response.data['data']['post'] == null) {
+        throw Exception('Invalid post data in response');
+      }
+
+      final post = response.data['data']['post'];
+      if (post['comments'] == null) {
+        return [];
+      }
+
+      return (post['comments'] as List)
+          .map((json) => comment_model.Comment.fromJson(json))
+          .toList();
+    } catch (e) {
+      print('Error getting comments: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> createComment(String postId, String content) async {
+    try {
+      final response = await _dio.post(
+        '$baseUrl/posts/$postId/comments',
+        data: {'content': content},
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+      
+      if (response.data == null) {
+        throw Exception('Invalid response from server');
+      }
+
+      if (!response.data['success']) {
+        throw Exception(response.data['error']?['message'] ?? 'Failed to add comment');
+      }
+    } catch (e) {
+      print('Error adding comment: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> deleteComment(String postId, String commentId) async {
+    try {
+      final response = await _dio.delete('$baseUrl/posts/$postId/comments/$commentId');
+      
+      if (response.data == null) {
+        throw Exception('Invalid response from server');
+      }
+
+      if (!response.data['success']) {
+        throw Exception(response.data['error']?['message'] ?? 'Failed to delete comment');
+      }
+    } catch (e) {
+      print('Error deleting comment: $e');
+      rethrow;
+    }
   }
 } 

@@ -4,7 +4,7 @@ class Post {
   final String id;
   final String userId;
   final User? user;
-  final String? content;
+  final String? description;
   final List<String> images;
   final List<String> likes;
   final List<Comment> comments;
@@ -15,7 +15,7 @@ class Post {
     required this.id,
     required this.userId,
     this.user,
-    this.content,
+    this.description,
     required this.images,
     required this.likes,
     required this.comments,
@@ -24,12 +24,68 @@ class Post {
   });
 
   factory Post.fromJson(Map<String, dynamic> json) {
+    // Fix user's profile picture URL
+    if (json['user'] != null && json['user']['profilePicture'] != null) {
+      // Convert Windows-style path to URL format
+      json['user']['profilePicture'] = json['user']['profilePicture'].replaceAll('\\', '/');
+      // Add base URL if it's a relative path
+      if (!json['user']['profilePicture'].startsWith('http')) {
+        // Ensure the path starts with 'uploads/'
+        if (!json['user']['profilePicture'].startsWith('uploads/')) {
+          json['user']['profilePicture'] = 'uploads/${json['user']['profilePicture']}';
+        }
+        final staticBaseUrl = 'http://localhost:3000';
+        json['user']['profilePicture'] = '$staticBaseUrl/${json['user']['profilePicture']}';
+      }
+    }
+
+    // Fix comment users' profile picture URLs
+    if (json['comments'] != null) {
+      for (var comment in json['comments']) {
+        if (comment['user'] != null && comment['user']['profilePicture'] != null) {
+          // Convert Windows-style path to URL format
+          comment['user']['profilePicture'] = comment['user']['profilePicture'].replaceAll('\\', '/');
+          // Add base URL if it's a relative path
+          if (!comment['user']['profilePicture'].startsWith('http')) {
+            // Ensure the path starts with 'uploads/'
+            if (!comment['user']['profilePicture'].startsWith('uploads/')) {
+              comment['user']['profilePicture'] = 'uploads/${comment['user']['profilePicture']}';
+            }
+            final staticBaseUrl = 'http://localhost:3000';
+            comment['user']['profilePicture'] = '$staticBaseUrl/${comment['user']['profilePicture']}';
+          }
+        }
+      }
+    }
+
+    // Fix post images URLs
+    List<String> images = [];
+    if (json['images'] != null) {
+      images = (json['images'] as List).map((imagePath) {
+        if (imagePath != null) {
+          // Convert Windows-style path to URL format
+          String path = imagePath.toString().replaceAll('\\', '/');
+          // Add base URL if it's a relative path
+          if (!path.startsWith('http')) {
+            // Ensure the path starts with 'uploads/'
+            if (!path.startsWith('uploads/')) {
+              path = 'uploads/$path';
+            }
+            final staticBaseUrl = 'http://localhost:3000';
+            path = '$staticBaseUrl/$path';
+          }
+          return path;
+        }
+        return '';
+      }).where((path) => path.isNotEmpty).toList();
+    }
+
     return Post(
       id: json['_id'],
-      userId: json['userId'],
-      user: json['user'] != null ? User.fromJson(json['user']) : null,
-      content: json['content'],
-      images: List<String>.from(json['images'] ?? []),
+      userId: json['user']['_id'],
+      user: User.fromJson(json['user']),
+      description: json['description'],
+      images: images,
       likes: List<String>.from(json['likes'] ?? []),
       comments: (json['comments'] as List<dynamic>?)
           ?.map((comment) => Comment.fromJson(comment))
@@ -44,7 +100,7 @@ class Post {
       '_id': id,
       'userId': userId,
       'user': user?.toJson(),
-      'content': content,
+      'description': description,
       'images': images,
       'likes': likes,
       'comments': comments.map((comment) => comment.toJson()).toList(),

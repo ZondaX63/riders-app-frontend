@@ -2,31 +2,29 @@ class User {
   final String id;
   final String username;
   final String email;
-  final String fullName;
+  final String? fullName;
   final String? profilePicture;
-  final String? bio;
-  final Map<String, dynamic>? motorcycleInfo;
   final List<String> followers;
   final List<String> following;
+  final String? bio;
+  final Map<String, dynamic>? motorcycleInfo;
   final String role;
   final DateTime createdAt;
   final DateTime updatedAt;
-  final String? profileImage;
 
   User({
     required this.id,
     required this.username,
     required this.email,
-    required this.fullName,
+    this.fullName,
     this.profilePicture,
-    this.bio,
-    this.motorcycleInfo,
     required this.followers,
     required this.following,
+    this.bio,
+    this.motorcycleInfo,
     required this.role,
     required this.createdAt,
     required this.updatedAt,
-    this.profileImage,
   });
 
   factory User.empty() {
@@ -34,39 +32,48 @@ class User {
       id: '',
       username: '',
       email: '',
-      fullName: '',
+      fullName: null,
       profilePicture: null,
-      bio: null,
-      motorcycleInfo: null,
       followers: [],
       following: [],
+      bio: null,
+      motorcycleInfo: null,
       role: 'user',
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
-      profileImage: null,
     );
   }
 
   factory User.fromJson(Map<String, dynamic> json) {
     String? profilePicture = json['profilePicture'];
-    if (profilePicture != null && profilePicture.isEmpty) {
-      profilePicture = null;
+    if (profilePicture != null) {
+      // Convert Windows-style path to URL format
+      profilePicture = profilePicture.replaceAll('\\', '/');
+      // Add base URL if it's a relative path
+      if (!profilePicture.startsWith('http')) {
+        // Remove /api from baseUrl for static file serving
+        final staticBaseUrl = 'http://localhost:3000';
+        // Ensure the path starts with 'uploads/'
+        if (!profilePicture.startsWith('uploads/')) {
+          profilePicture = 'uploads/$profilePicture';
+        }
+        profilePicture = '$staticBaseUrl/$profilePicture';
+      }
     }
 
     return User(
       id: json['id'] ?? json['_id'] ?? '',
       username: json['username'] ?? '',
       email: json['email'] ?? '',
-      fullName: json['fullName'] ?? '',
+      fullName: json['fullName'],
       profilePicture: profilePicture,
-      bio: json['bio'],
-      motorcycleInfo: json['motorcycleInfo'],
       followers: List<String>.from(json['followers'] ?? []),
       following: List<String>.from(json['following'] ?? []),
+      bio: json['bio'],
+      motorcycleInfo: json['motorcycleInfo'],
       role: json['role'] ?? 'user',
       createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(),
       updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : DateTime.now(),
-      profileImage: json['profileImage'],
     );
   }
 
@@ -77,14 +84,13 @@ class User {
       'email': email,
       'fullName': fullName,
       'profilePicture': profilePicture,
-      'bio': bio,
-      'motorcycleInfo': motorcycleInfo,
       'followers': followers,
       'following': following,
+      'bio': bio,
+      'motorcycleInfo': motorcycleInfo,
       'role': role,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
-      'profileImage': profileImage,
     };
   }
 
@@ -101,7 +107,6 @@ class User {
     String? role,
     DateTime? createdAt,
     DateTime? updatedAt,
-    String? profileImage,
   }) {
     return User(
       id: id ?? this.id,
@@ -116,7 +121,6 @@ class User {
       role: role ?? this.role,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
-      profileImage: profileImage ?? this.profileImage,
     );
   }
 } 

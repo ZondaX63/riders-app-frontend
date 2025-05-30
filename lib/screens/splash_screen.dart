@@ -41,18 +41,19 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
     // Check authentication status after animation
     Future.delayed(const Duration(seconds: 2), () {
-      _checkAuthStatus();
+      _checkAuth();
     });
   }
 
-  Future<void> _checkAuthStatus() async {
+  void _checkAuth() async {
+    await Future.delayed(const Duration(seconds: 2));
+    if (!mounted) return;
+
     final authProvider = context.read<AuthProvider>();
-    final isAuthenticated = await authProvider.checkAuthStatus();
-    
-    if (mounted) {
-      Navigator.of(context).pushReplacementNamed(
-        isAuthenticated ? '/home' : '/login',
-      );
+    if (authProvider.isAuthenticated) {
+      Navigator.pushReplacementNamed(context, '/main');
+    } else {
+      Navigator.pushReplacementNamed(context, '/login');
     }
   }
 

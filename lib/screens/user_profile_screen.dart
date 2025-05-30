@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/user.dart';
 import '../services/api_service.dart';
 import 'chat_detail_screen.dart';
+import '../providers/auth_provider.dart';
 
 class UserProfileScreen extends StatefulWidget {
   final String userId;
@@ -37,6 +39,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   void initState() {
     super.initState();
     _loadUserData();
+    _checkFollowStatus();
   }
 
   Future<void> _loadUserData() async {
@@ -54,6 +57,19 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     }
   }
 
+  Future<void> _checkFollowStatus() async {
+    try {
+      final currentUser = context.read<AuthProvider>().currentUser;
+      if (currentUser != null && _user != null) {
+        setState(() {
+          _isFollowing = _user!.followers.contains(currentUser.id);
+        });
+      }
+    } catch (e) {
+      print('Error checking follow status: $e');
+    }
+  }
+
   Future<void> _toggleFollow() async {
     if (_user == null) return;
 
@@ -65,14 +81,34 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     try {
       if (_isFollowing) {
         await _apiService.unfollowUser(_user!.id);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${_user!.username} takibi bırakıldı'),
+            backgroundColor: Colors.grey[800],
+          ),
+        );
       } else {
         await _apiService.followUser(_user!.id);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${_user!.username} takip ediliyor'),
+            backgroundColor: Colors.green,
+          ),
+        );
       }
       await _loadUserData();
+      await _checkFollowStatus();
+      await Provider.of<AuthProvider>(context, listen: false).checkAuthStatus();
     } catch (e) {
       setState(() {
         _error = e.toString();
       });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Hata: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
     } finally {
       setState(() {
         _isLoading = false;
@@ -166,7 +202,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             ),
             const SizedBox(height: 24),
             Text(
-              _user!.fullName,
+              _user!.fullName ?? _user!.username,
               style: Theme.of(context).textTheme.headlineSmall,
               textAlign: TextAlign.center,
             ),

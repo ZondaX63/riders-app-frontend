@@ -114,13 +114,13 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  Future<void> updateProfile(String fullName, String bio) async {
+  Future<void> updateProfile(String fullName, String bio, [Map<String, dynamic>? motorcycleInfo]) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      final updatedUser = await _apiService.updateProfile(fullName, bio);
+      final updatedUser = await _apiService.updateProfile(fullName, bio, motorcycleInfo);
       _currentUser = updatedUser;
       await _prefs.setString('user', jsonEncode(_currentUser!.toJson()));
       notifyListeners();

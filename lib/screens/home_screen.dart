@@ -3,10 +3,12 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../models/post.dart';
 import '../services/api_service.dart';
-import 'create_post_screen.dart';
-import 'search_screen.dart';
+import '../widgets/post_card.dart';
 import 'notifications_screen.dart';
 import 'chat_screen.dart';
+import 'user_profile_screen.dart';
+import 'package:timeago/timeago.dart' as timeago;
+import 'comments_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -20,12 +22,26 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoading = false;
   String? _error;
   late ApiService _apiService;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _apiService = context.read<ApiService>();
     _loadPosts();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+      _loadPosts();
+    }
   }
 
   Future<void> _loadPosts() async {
@@ -59,30 +75,46 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _handleLike(Post post) async {
+    try {
+      if (post.likes.contains(context.read<AuthProvider>().currentUser?.id)) {
+        await _apiService.unlikePost(post.id);
+      } else {
+        await _apiService.likePost(post.id);
+      }
+      _loadPosts(); // Refresh posts after like/unlike
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: const Text('MotoSocial'),
-        elevation: 0,
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        title: const Text('Riders Social'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.chat),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const ChatScreen()),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.notifications),
+            icon: const Icon(Icons.notifications_outlined),
             onPressed: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.chat_outlined),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ChatScreen()),
               );
             },
           ),
@@ -120,131 +152,44 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       )
                     : ListView.builder(
+                        controller: _scrollController,
                         padding: const EdgeInsets.all(8),
-                        itemCount: _posts.length,
+                        itemCount: _posts.length + (_isLoading ? 1 : 0),
                         itemBuilder: (context, index) {
+                          if (index == _posts.length) {
+                            return const Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(16.0),
+                                child: CircularProgressIndicator(),
+                              ),
+                            );
+                          }
+
                           final post = _posts[index];
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                ListTile(
-                                  leading: CircleAvatar(
-                                    backgroundImage: post.user?.profilePicture != null
-                                        ? NetworkImage(post.user!.profilePicture!)
-                                        : null,
-                                    child: post.user?.profilePicture == null
-                                        ? const Icon(Icons.person)
-                                        : null,
-                                  ),
-                                  title: Text(post.user?.fullName ?? 'Unknown User'),
-                                  subtitle: Text('@${post.user?.username ?? 'unknown'}'),
-                                  trailing: IconButton(
-                                    icon: const Icon(Icons.more_vert),
-                                    onPressed: () {
-                                      // TODO: Show post options
-                                    },
-                                  ),
+                          final isLiked = post.likes.contains(context.read<AuthProvider>().currentUser?.id);
+
+                          return PostCard(
+                            id: post.id,
+                            description: post.description ?? '',
+                            images: post.images,
+                            username: post.user?.username ?? 'Unknown User',
+                            profilePicture: post.user?.profilePicture,
+                            createdAt: post.createdAt,
+                            likesCount: post.likes.length,
+                            commentsCount: post.comments.length,
+                            isLiked: isLiked,
+                            onLike: () => _handleLike(post),
+                            onComment: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => CommentsScreen(post: post),
                                 ),
-                                if (post.content != null)
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                    child: Text(post.content!),
-                                  ),
-                                if (post.images.isNotEmpty)
-                                  SizedBox(
-                                    height: 300,
-                                    child: PageView.builder(
-                                      itemCount: post.images.length,
-                                      itemBuilder: (context, imageIndex) {
-                                        return Image.network(
-                                          post.images[imageIndex],
-                                          fit: BoxFit.cover,
-                                          errorBuilder: (context, error, stackTrace) {
-                                            print('Error loading image: $error');
-                                            return const Center(
-                                              child: Icon(Icons.error),
-                                            );
-                                          },
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          IconButton(
-                                            icon: Icon(
-                                              post.likes.contains(context.read<AuthProvider>().currentUser?.id)
-                                                  ? Icons.favorite
-                                                  : Icons.favorite_border,
-                                              color: post.likes.contains(context.read<AuthProvider>().currentUser?.id)
-                                                  ? Colors.red
-                                                  : null,
-                                            ),
-                                            onPressed: () {
-                                              // TODO: Implement like functionality
-                                            },
-                                          ),
-                                          IconButton(
-                                            icon: const Icon(Icons.comment_outlined),
-                                            onPressed: () {
-                                              // TODO: Implement comment functionality
-                                            },
-                                          ),
-                                          IconButton(
-                                            icon: const Icon(Icons.share_outlined),
-                                            onPressed: () {
-                                              // TODO: Implement share functionality
-                                            },
-                                          ),
-                                        ],
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(Icons.bookmark_border),
-                                        onPressed: () {
-                                          // TODO: Implement save functionality
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                if (post.likes.isNotEmpty)
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                                    child: Text(
-                                      '${post.likes.length} likes',
-                                      style: const TextStyle(fontWeight: FontWeight.bold),
-                                    ),
-                                  ),
-                                if (post.comments.isNotEmpty)
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'View all ${post.comments.length} comments',
-                                          style: TextStyle(
-                                            color: Colors.grey[600],
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          '${post.comments.first.user.username}: ${post.comments.first.content}',
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                              ],
-                            ),
+                              );
+                            },
+                            onShare: () {
+                              // TODO: Implement share
+                            },
                           );
                         },
                       ),

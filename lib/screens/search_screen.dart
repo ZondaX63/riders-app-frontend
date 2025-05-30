@@ -17,6 +17,19 @@ class _SearchScreenState extends State<SearchScreen> {
   bool _isLoading = false;
   String? _error;
 
+  String _getProfilePictureUrl(String? profilePicture) {
+    if (profilePicture == null || profilePicture.isEmpty) {
+      return '';
+    }
+    // Convert backslashes to forward slashes and ensure proper URL format
+    final normalizedPath = profilePicture.replaceAll('\\', '/');
+    // Add base URL if it's a relative path
+    if (!normalizedPath.startsWith('http')) {
+      return 'http://localhost:3000/$normalizedPath';
+    }
+    return normalizedPath;
+  }
+
   Future<void> _searchUsers(String query) async {
     if (query.isEmpty) {
       setState(() {
@@ -85,17 +98,18 @@ class _SearchScreenState extends State<SearchScreen> {
                       itemCount: _searchResults.length,
                       itemBuilder: (context, index) {
                         final user = _searchResults[index];
+                        final profilePictureUrl = _getProfilePictureUrl(user.profilePicture);
                         return ListTile(
                           leading: CircleAvatar(
-                            backgroundImage: user.profilePicture != null
-                                ? NetworkImage(user.profilePicture!)
+                            backgroundImage: profilePictureUrl.isNotEmpty
+                                ? NetworkImage(profilePictureUrl)
                                 : null,
-                            child: user.profilePicture == null
+                            child: profilePictureUrl.isEmpty
                                 ? const Icon(Icons.person)
                                 : null,
                           ),
                           title: Text(user.username),
-                          subtitle: Text(user.fullName),
+                          subtitle: Text(user.fullName ?? user.username),
                           onTap: () {
                             Navigator.push(
                               context,

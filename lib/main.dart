@@ -63,12 +63,11 @@ class _MyAppState extends State<MyApp> {
         navigatorKey: navigatorKey,
         title: 'MotoSocial',
         theme: AppTheme.darkTheme,
-        initialRoute: '/',
+        home: const SplashScreen(),
         routes: {
-          '/': (context) => const SplashScreen(),
           '/login': (context) => const LoginScreen(),
           '/register': (context) => const RegisterScreen(),
-          '/home': (context) => Scaffold(
+          '/main': (context) => Scaffold(
                 body: _screens[_selectedIndex],
                 bottomNavigationBar: BottomNavigationBar(
                   currentIndex: _selectedIndex,

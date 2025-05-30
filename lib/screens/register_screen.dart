@@ -15,8 +15,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _fullNameController = TextEditingController();
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
+  bool _isLoading = false;
+  String? _error;
 
   @override
   void dispose() {
@@ -24,16 +27,37 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _fullNameController.dispose();
     super.dispose();
   }
 
   Future<void> _register() async {
     if (_formKey.currentState!.validate()) {
-      await context.read<AuthProvider>().register(
-            _usernameController.text.trim(),
-            _emailController.text.trim(),
-            _passwordController.text,
-          );
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+
+      try {
+        await context.read<AuthProvider>().register(
+          _usernameController.text,
+          _emailController.text,
+          _passwordController.text,
+        );
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, '/main');
+        }
+      } catch (e) {
+        setState(() {
+          _error = e.toString();
+        });
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      }
     }
   }
 
@@ -164,14 +188,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                   // Register Button
                   ElevatedButton(
-                    onPressed: authProvider.isLoading ? null : _register,
+                    onPressed: _isLoading ? null : _register,
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    child: authProvider.isLoading
+                    child: _isLoading
                         ? const CircularProgressIndicator()
                         : const Text(
                             'Register',
@@ -189,11 +213,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
 
                   // Error Message
-                  if (authProvider.error != null)
+                  if (_error != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 16),
                       child: Text(
-                        authProvider.error!,
+                        _error!,
                         style: const TextStyle(
                           color: Colors.red,
                           fontSize: 14,
