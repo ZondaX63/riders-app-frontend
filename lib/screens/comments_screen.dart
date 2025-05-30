@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/comment.dart' as comment_model;
 import '../models/post.dart';
-import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import '../widgets/comment_card.dart';
 

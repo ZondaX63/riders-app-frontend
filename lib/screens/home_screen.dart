@@ -6,8 +6,6 @@ import '../services/api_service.dart';
 import '../widgets/post_card.dart';
 import 'notifications_screen.dart';
 import 'chat_screen.dart';
-import 'user_profile_screen.dart';
-import 'package:timeago/timeago.dart' as timeago;
 import 'comments_screen.dart';
 
 class HomeScreen extends StatefulWidget {

@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../services/api_service.dart';
-import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 
 class CreatePostScreen extends StatefulWidget {
