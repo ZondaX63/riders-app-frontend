@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class PostCard extends StatelessWidget {
@@ -6,6 +7,7 @@ class PostCard extends StatelessWidget {
   final List<String> images;
   final String username;
   final String? profilePicture;
+  final String? userId;
   final DateTime createdAt;
   final int likesCount;
   final int commentsCount;
@@ -13,6 +15,7 @@ class PostCard extends StatelessWidget {
   final VoidCallback onLike;
   final VoidCallback onComment;
   final VoidCallback onShare;
+  final VoidCallback? onProfileTap;
 
   const PostCard({
     super.key,
@@ -21,6 +24,7 @@ class PostCard extends StatelessWidget {
     required this.images,
     required this.username,
     this.profilePicture,
+    this.userId,
     required this.createdAt,
     required this.likesCount,
     required this.commentsCount,
@@ -28,6 +32,7 @@ class PostCard extends StatelessWidget {
     required this.onLike,
     required this.onComment,
     required this.onShare,
+    this.onProfileTap,
   });
 
   Widget _buildImageGrid(List<String> images) {
@@ -53,7 +58,9 @@ class PostCard extends StatelessWidget {
                     );
                   },
                   errorBuilder: (context, error, stackTrace) {
-                    print('Error loading image: $error');
+                    if (kDebugMode) {
+                      debugPrint('Error loading image: $error');
+                    }
                     return Container(
                       color: Colors.grey[200],
                       child: const Center(
@@ -89,7 +96,9 @@ class PostCard extends StatelessWidget {
                         );
                       },
                       errorBuilder: (context, error, stackTrace) {
-                        print('Error loading image: $error');
+                        if (kDebugMode) {
+                          debugPrint('Error loading image: $error');
+                        }
                         return Container(
                           color: Colors.grey[200],
                           child: const Center(
@@ -113,6 +122,7 @@ class PostCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ListTile(
+            onTap: onProfileTap,
             leading: CircleAvatar(
               backgroundImage: profilePicture != null
                   ? NetworkImage(profilePicture!)
@@ -133,27 +143,33 @@ class PostCard extends StatelessWidget {
               child: Text(description),
             ),
           _buildImageGrid(images),
-          ButtonBar(
-            alignment: MainAxisAlignment.start,
-            children: [
-              IconButton(
-                icon: Icon(
-                  isLiked ? Icons.favorite : Icons.favorite_border,
-                  color: isLiked ? Colors.red : null,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: OverflowBar(
+              alignment: MainAxisAlignment.start,
+              overflowAlignment: OverflowBarAlignment.start,
+              spacing: 8,
+              overflowSpacing: 8,
+              children: [
+                IconButton(
+                  icon: Icon(
+                    isLiked ? Icons.favorite : Icons.favorite_border,
+                    color: isLiked ? Colors.red : null,
+                  ),
+                  onPressed: onLike,
                 ),
-                onPressed: onLike,
-              ),
-              Text('$likesCount'),
-              IconButton(
-                icon: const Icon(Icons.comment_outlined),
-                onPressed: onComment,
-              ),
-              Text('$commentsCount'),
-              IconButton(
-                icon: const Icon(Icons.share_outlined),
-                onPressed: onShare,
-              ),
-            ],
+                Text('$likesCount'),
+                IconButton(
+                  icon: const Icon(Icons.comment_outlined),
+                  onPressed: onComment,
+                ),
+                Text('$commentsCount'),
+                IconButton(
+                  icon: const Icon(Icons.share_outlined),
+                  onPressed: onShare,
+                ),
+              ],
+            ),
           ),
         ],
       ),

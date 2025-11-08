@@ -86,6 +86,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
       _commentController.clear();
       _loadComments();
     } catch (e) {
+      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error: ${e.toString()}'),
@@ -151,7 +152,6 @@ class _CommentsScreenState extends State<CommentsScreen> {
                               return CommentCard(
                                 comment: comment,
                                 onReply: () {
-                                  // TODO: Implement reply functionality
                                 },
                               );
                             },
@@ -163,7 +163,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
               color: Theme.of(context).cardColor,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withValues(alpha: 0.1),
                   blurRadius: 4,
                   offset: const Offset(0, -2),
                 ),
@@ -193,3 +193,6 @@ class _CommentsScreenState extends State<CommentsScreen> {
     );
   }
 } 
+
+
+

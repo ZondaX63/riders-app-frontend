@@ -1,3 +1,5 @@
+import '../utils/url_utils.dart';
+
 class User {
   final String id;
   final String username;
@@ -46,20 +48,7 @@ class User {
 
   factory User.fromJson(Map<String, dynamic> json) {
     String? profilePicture = json['profilePicture'];
-    if (profilePicture != null) {
-      // Convert Windows-style path to URL format
-      profilePicture = profilePicture.replaceAll('\\', '/');
-      // Add base URL if it's a relative path
-      if (!profilePicture.startsWith('http')) {
-        // Remove /api from baseUrl for static file serving
-        final staticBaseUrl = 'http://localhost:3000';
-        // Ensure the path starts with 'uploads/'
-        if (!profilePicture.startsWith('uploads/')) {
-          profilePicture = 'uploads/$profilePicture';
-        }
-        profilePicture = '$staticBaseUrl/$profilePicture';
-      }
-    }
+    profilePicture = UrlUtils.buildStaticUrl(profilePicture);
 
     return User(
       id: json['id'] ?? json['_id'] ?? '',

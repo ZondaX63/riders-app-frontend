@@ -43,6 +43,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           _usernameController.text,
           _emailController.text,
           _passwordController.text,
+          _fullNameController.text,
         );
         if (mounted) {
           Navigator.pushReplacementNamed(context, '/main');
@@ -92,6 +93,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       }
                       if (value.length < 3) {
                         return 'Username must be at least 3 characters';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Full Name Field
+                  TextFormField(
+                    controller: _fullNameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Full Name',
+                      prefixIcon: Icon(Icons.badge),
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter your full name';
+                      }
+                      if (value.length < 2) {
+                        return 'Full name must be at least 2 characters';
                       }
                       return null;
                     },
@@ -233,3 +254,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 } 
+
+
+

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'config/logger_config.dart';
 import 'providers/auth_provider.dart';
 import 'services/api_service.dart';
 import 'services/storage_service.dart';
@@ -10,14 +11,22 @@ import 'screens/register_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/search_screen.dart';
 import 'screens/create_post_screen.dart';
-import 'screens/profile_screen.dart';
+import 'screens/profile_screen.dart'; // Contains ModernProfileScreen
 import 'screens/chat_list_screen.dart';
+import 'widgets/modern_bottom_nav.dart';
 import 'theme/app_theme.dart';
+import 'screens/grouprides_screen.dart';
+import 'screens/app_settings_screen.dart';
+import 'screens/explore_screen_new.dart';
+import 'providers/map_pin_provider.dart';
+import 'services/socket_service.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Configure logging
+  LoggerConfig.configure();
   final prefs = await SharedPreferences.getInstance();
   runApp(MyApp(prefs: prefs));
 }
@@ -35,10 +44,10 @@ class _MyAppState extends State<MyApp> {
 
   final List<Widget> _screens = [
     const HomeScreen(),
-    const SearchScreen(),
+    const ExploreScreen(),
     const CreatePostScreen(),
     const ChatListScreen(),
-    const ProfileScreen(),
+    const ModernProfileScreen(),
   ];
 
   @override
@@ -58,6 +67,33 @@ class _MyAppState extends State<MyApp> {
             widget.prefs,
           ),
         ),
+        ChangeNotifierProxyProvider2<ApiService, AuthProvider, SocketService>(
+          create: (context) => SocketService(context.read<ApiService>()),
+          update: (context, api, auth, socket) {
+            socket ??= SocketService(api);
+            socket.updateAuth(auth);
+            return socket;
+          },
+        ),
+        ChangeNotifierProxyProvider3<ApiService, SocketService, AuthProvider, MapPinProvider>(
+          create: (context) => MapPinProvider(
+            apiService: context.read<ApiService>(),
+            socketService: context.read<SocketService>(),
+            currentUserId: context.read<AuthProvider>().currentUser?.id,
+          ),
+          update: (context, api, socket, auth, provider) {
+            provider ??= MapPinProvider(
+              apiService: api,
+              socketService: socket,
+              currentUserId: auth.currentUser?.id,
+            );
+            provider.updateDependencies(
+              socketService: socket,
+              currentUserId: auth.currentUser?.id,
+            );
+            return provider;
+          },
+        ),
       ],
       child: MaterialApp(
         navigatorKey: navigatorKey,
@@ -67,41 +103,19 @@ class _MyAppState extends State<MyApp> {
         routes: {
           '/login': (context) => const LoginScreen(),
           '/register': (context) => const RegisterScreen(),
+          '/group-rides': (context) => const GroupRidesScreen(),
+          '/settings': (context) => const AppSettingsScreen(),
+          '/search': (context) => const SearchScreen(),
           '/main': (context) => Scaffold(
                 body: _screens[_selectedIndex],
-                bottomNavigationBar: BottomNavigationBar(
+                bottomNavigationBar: ModernBottomNav(
                   currentIndex: _selectedIndex,
-                  onTap: (index) {
-                    setState(() {
-                      _selectedIndex = index;
-                    });
+                  onTabSelected: (i) {
+                    setState(() => _selectedIndex = i);
                   },
-                  type: BottomNavigationBarType.fixed,
-                  backgroundColor: AppTheme.darkTheme.scaffoldBackgroundColor,
-                  selectedItemColor: Colors.white,
-                  unselectedItemColor: Colors.grey,
-                  items: const [
-                    BottomNavigationBarItem(
-                      icon: Icon(Icons.home),
-                      label: 'Home',
-                    ),
-                    BottomNavigationBarItem(
-                      icon: Icon(Icons.search),
-                      label: 'Search',
-                    ),
-                    BottomNavigationBarItem(
-                      icon: Icon(Icons.add_box_outlined),
-                      label: 'Post',
-                    ),
-                    BottomNavigationBarItem(
-                      icon: Icon(Icons.chat),
-                      label: 'Chat',
-                    ),
-                    BottomNavigationBarItem(
-                      icon: Icon(Icons.person),
-                      label: 'Profile',
-                    ),
-                  ],
+                  onCreate: () {
+                    setState(() => _selectedIndex = 2);
+                  },
                 ),
               ),
         },

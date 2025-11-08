@@ -28,8 +28,6 @@ class Message {
   });
 
   factory Message.fromJson(Map<String, dynamic> json) {
-    if (json == null) return Message.empty();
-
     return Message(
       id: json['_id']?.toString() ?? '',
       chatId: json['conversation']?.toString() ?? '',
@@ -88,8 +86,6 @@ class MessageRead {
   });
 
   factory MessageRead.fromJson(Map<String, dynamic> json) {
-    if (json == null) return MessageRead.empty();
-
     return MessageRead(
       userId: json['user']?.toString() ?? '',
       readAt: json['readAt'] != null

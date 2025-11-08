@@ -1,5 +1,5 @@
-import 'package:flutter/foundation.dart';
 import 'user.dart';
+import '../utils/url_utils.dart';
 import 'message.dart';
 
 class Chat {
@@ -37,12 +37,7 @@ class Chat {
       if (userData['profilePicture'] == '' || userData['profilePicture'] == null) {
         userData['profilePicture'] = null;
       } else {
-        // Convert Windows-style path to URL format
-        userData['profilePicture'] = userData['profilePicture'].replaceAll('\\', '/');
-        // Add base URL if it's a relative path
-        if (!userData['profilePicture'].startsWith('http')) {
-          userData['profilePicture'] = 'http://localhost:3000/${userData['profilePicture']}';
-        }
+        userData['profilePicture'] = UrlUtils.buildStaticUrl(userData['profilePicture']);
       }
       
       return User.fromJson(userData);
@@ -84,12 +79,7 @@ class Chat {
       otherUser = participants.first;
     }
 
-    if (kDebugMode) {
-      print('Chat participants: ${participants.map((p) => '${p.username} (${p.id})').join(', ')}');
-      print('Current user ID: $currentUserId');
-      print('Other user: ${otherUser?.username} (${otherUser?.id})');
-      print('Other user profile picture: ${otherUser?.profilePicture}');
-    }
+    // no verbose logging
 
     return Chat(
       id: conversation['_id']?.toString() ?? '',

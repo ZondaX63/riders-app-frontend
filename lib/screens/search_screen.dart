@@ -17,18 +17,8 @@ class _SearchScreenState extends State<SearchScreen> {
   bool _isLoading = false;
   String? _error;
 
-  String _getProfilePictureUrl(String? profilePicture) {
-    if (profilePicture == null || profilePicture.isEmpty) {
-      return '';
-    }
-    // Convert backslashes to forward slashes and ensure proper URL format
-    final normalizedPath = profilePicture.replaceAll('\\', '/');
-    // Add base URL if it's a relative path
-    if (!normalizedPath.startsWith('http')) {
-      return 'http://localhost:3000/$normalizedPath';
-    }
-    return normalizedPath;
-  }
+  String _getProfilePictureUrl(String? profilePicture) =>
+      ApiService().buildStaticUrl(profilePicture ?? '');
 
   Future<void> _searchUsers(String query) async {
     if (query.isEmpty) {
@@ -124,3 +114,6 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 } 
+
+
+

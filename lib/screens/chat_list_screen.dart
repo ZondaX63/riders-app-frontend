@@ -64,7 +64,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
           IconButton(
             icon: const Icon(Icons.search),
             onPressed: () {
-              // TODO: Implement search functionality
             },
           ),
         ],
@@ -214,3 +213,6 @@ class ChatListItem extends StatelessWidget {
     }
   }
 } 
+
+
+

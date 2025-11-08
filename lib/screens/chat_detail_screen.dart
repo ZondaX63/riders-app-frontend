@@ -6,7 +6,6 @@ import '../providers/auth_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
-import 'package:flutter/foundation.dart';
 
 class ChatDetailScreen extends StatefulWidget {
   final Chat chat;
@@ -48,16 +47,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         _isLoading = true;
         _error = null;
       });
-
-      if (kDebugMode) {
-        print('Loading messages for chat: ${widget.chat.id}');
-      }
-
-      final messages = await _apiService.getChatMessages(widget.chat.id);
       
-      if (kDebugMode) {
-        print('Loaded messages: ${messages.length}');
-      }
+      final messages = await _apiService.getChatMessages(widget.chat.id);
 
       setState(() {
         _messages = messages;
@@ -78,9 +69,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         }
       });
     } catch (e) {
-      if (kDebugMode) {
-        print('Error loading messages: $e');
-      }
+      print('Error loading messages: $e');
       setState(() {
         _error = 'Failed to load messages: ${e.toString()}';
         _isLoading = false;
@@ -115,6 +104,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         }
       });
     } catch (e) {
+      
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to send message')),
       );
@@ -126,9 +116,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       final picker = ImagePicker();
       final image = await picker.pickImage(source: source);
       if (image != null) {
-        // TODO: Implement image upload and sending
       }
     } catch (e) {
+      
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to pick image')),
       );
@@ -149,6 +139,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         }
       });
     } catch (e) {
+      
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to delete message')),
       );
@@ -212,7 +203,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                       leading: const Icon(Icons.notifications_off),
                       title: const Text('Bildirimleri Sessize Al'),
                       onTap: () {
-                        // TODO: Implement mute notifications
                         Navigator.pop(context);
                       },
                     ),
@@ -238,6 +228,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                                     if (mounted) {
                                       Navigator.pop(context); // Close dialog
                                       Navigator.pop(context); // Return to chat list
+                                      
                                       ScaffoldMessenger.of(context).showSnackBar(
                                         const SnackBar(content: Text('Sohbet başarıyla silindi')),
                                       );
@@ -245,6 +236,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                                   } catch (e) {
                                     if (mounted) {
                                       Navigator.pop(context); // Close dialog
+                                      
                                       ScaffoldMessenger.of(context).showSnackBar(
                                         const SnackBar(content: Text('Sohbet silinirken bir hata oluştu')),
                                       );
@@ -337,7 +329,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               color: Theme.of(context).scaffoldBackgroundColor,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withValues(alpha: 0.1),
                   blurRadius: 4,
                   offset: const Offset(0, -2),
                 ),
@@ -474,4 +466,7 @@ class MessageBubble extends StatelessWidget {
   String _formatTime(DateTime time) {
     return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
   }
-} 
+}
+
+
+

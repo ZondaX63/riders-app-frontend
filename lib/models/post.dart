@@ -1,4 +1,5 @@
 import 'user.dart';
+import '../utils/url_utils.dart';
 
 class Post {
   final String id;
@@ -26,34 +27,16 @@ class Post {
   factory Post.fromJson(Map<String, dynamic> json) {
     // Fix user's profile picture URL
     if (json['user'] != null && json['user']['profilePicture'] != null) {
-      // Convert Windows-style path to URL format
-      json['user']['profilePicture'] = json['user']['profilePicture'].replaceAll('\\', '/');
-      // Add base URL if it's a relative path
-      if (!json['user']['profilePicture'].startsWith('http')) {
-        // Ensure the path starts with 'uploads/'
-        if (!json['user']['profilePicture'].startsWith('uploads/')) {
-          json['user']['profilePicture'] = 'uploads/${json['user']['profilePicture']}';
-        }
-        final staticBaseUrl = 'http://localhost:3000';
-        json['user']['profilePicture'] = '$staticBaseUrl/${json['user']['profilePicture']}';
-      }
+      json['user']['profilePicture'] =
+          UrlUtils.buildStaticUrl(json['user']['profilePicture']);
     }
 
     // Fix comment users' profile picture URLs
     if (json['comments'] != null) {
       for (var comment in json['comments']) {
         if (comment['user'] != null && comment['user']['profilePicture'] != null) {
-          // Convert Windows-style path to URL format
-          comment['user']['profilePicture'] = comment['user']['profilePicture'].replaceAll('\\', '/');
-          // Add base URL if it's a relative path
-          if (!comment['user']['profilePicture'].startsWith('http')) {
-            // Ensure the path starts with 'uploads/'
-            if (!comment['user']['profilePicture'].startsWith('uploads/')) {
-              comment['user']['profilePicture'] = 'uploads/${comment['user']['profilePicture']}';
-            }
-            final staticBaseUrl = 'http://localhost:3000';
-            comment['user']['profilePicture'] = '$staticBaseUrl/${comment['user']['profilePicture']}';
-          }
+          comment['user']['profilePicture'] =
+              UrlUtils.buildStaticUrl(comment['user']['profilePicture']);
         }
       }
     }
@@ -61,23 +44,10 @@ class Post {
     // Fix post images URLs
     List<String> images = [];
     if (json['images'] != null) {
-      images = (json['images'] as List).map((imagePath) {
-        if (imagePath != null) {
-          // Convert Windows-style path to URL format
-          String path = imagePath.toString().replaceAll('\\', '/');
-          // Add base URL if it's a relative path
-          if (!path.startsWith('http')) {
-            // Ensure the path starts with 'uploads/'
-            if (!path.startsWith('uploads/')) {
-              path = 'uploads/$path';
-            }
-            final staticBaseUrl = 'http://localhost:3000';
-            path = '$staticBaseUrl/$path';
-          }
-          return path;
-        }
-        return '';
-      }).where((path) => path.isNotEmpty).toList();
+      images = (json['images'] as List)
+          .map((imagePath) => UrlUtils.buildStaticUrl(imagePath?.toString()))
+          .where((path) => path.isNotEmpty)
+          .toList();
     }
 
     return Post(

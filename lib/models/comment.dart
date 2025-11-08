@@ -1,4 +1,5 @@
 import 'user.dart';
+import '../utils/url_utils.dart';
 
 class Comment {
   final String id;
@@ -19,11 +20,8 @@ class Comment {
 
   factory Comment.fromJson(Map<String, dynamic> json) {
     if (json['user'] != null && json['user']['profilePicture'] != null) {
-      json['user']['profilePicture'] = json['user']['profilePicture'].replaceAll('\\', '/');
-      if (!json['user']['profilePicture'].startsWith('http')) {
-        final staticBaseUrl = 'http://localhost:3000';
-        json['user']['profilePicture'] = '$staticBaseUrl/${json['user']['profilePicture']}';
-      }
+      json['user']['profilePicture'] =
+          UrlUtils.buildStaticUrl(json['user']['profilePicture']);
     }
 
     return Comment(

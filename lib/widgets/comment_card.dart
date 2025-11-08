@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../models/comment.dart' as comment_model;
-import '../models/user.dart';
 
 class CommentCard extends StatelessWidget {
   final comment_model.Comment comment;
@@ -27,9 +26,9 @@ class CommentCard extends StatelessWidget {
                   backgroundImage: comment.user?.profilePicture != null
                       ? NetworkImage(comment.user!.profilePicture!)
                       : null,
-                  child: comment.user?.profilePicture == null
-                      ? Text(comment.user?.username?[0].toUpperCase() ?? '?')
-                      : null,
+          child: comment.user?.profilePicture == null
+            ? Text(_avatarText())
+            : null,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -84,5 +83,14 @@ class CommentCard extends StatelessWidget {
     } else {
       return 'Az önce';
     }
+  }
+
+  String _avatarText() {
+    final u = comment.user;
+    final name = u?.username;
+    if (name != null && name.isNotEmpty) {
+      return name[0].toUpperCase();
+    }
+    return '?';
   }
 } 

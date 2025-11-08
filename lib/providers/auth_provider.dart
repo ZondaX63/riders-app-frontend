@@ -34,7 +34,9 @@ class AuthProvider with ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      print('Error loading user: $e');
+      if (kDebugMode) {
+        debugPrint('Error loading user: $e');
+      }
     }
   }
 
@@ -60,13 +62,13 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  Future<void> register(String username, String email, String password) async {
+  Future<void> register(String username, String email, String password, String fullName) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      final response = await _apiService.register(username, email, password);
+      final response = await _apiService.register(username, email, password, fullName);
       _currentUser = User.fromJson(response['user']);
       _token = response['token'];
       await _prefs.setString('user', jsonEncode(_currentUser!.toJson()));
@@ -162,7 +164,9 @@ class AuthProvider with ChangeNotifier {
       await _prefs.setString('user', jsonEncode(_currentUser!.toJson()));
       return true;
     } catch (e) {
-      print('Auth check error: $e');
+      if (kDebugMode) {
+        debugPrint('Auth check error: $e');
+      }
       return false;
     }
   }

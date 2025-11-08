@@ -24,16 +24,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   String? _error;
   bool _isFollowing = false;
 
-  String _getProfilePictureUrl(String? path) {
-    if (path == null || path.isEmpty) return '';
-    // Replace backslashes with forward slashes
-    final normalizedPath = path.replaceAll('\\', '/');
-    // If the path doesn't start with http, prepend the base URL
-    if (!normalizedPath.startsWith('http')) {
-      return 'http://localhost:3000/$normalizedPath';
-    }
-    return normalizedPath;
-  }
+  String _getProfilePictureUrl(String? path) => ApiService().buildStaticUrl(path ?? '');
 
   @override
   void initState() {
@@ -81,6 +72,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     try {
       if (_isFollowing) {
         await _apiService.unfollowUser(_user!.id);
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('${_user!.username} takibi bırakıldı'),
@@ -89,6 +81,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         );
       } else {
         await _apiService.followUser(_user!.id);
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('${_user!.username} takip ediliyor'),
@@ -103,6 +96,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       setState(() {
         _error = e.toString();
       });
+      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Hata: ${e.toString()}'),
@@ -166,7 +160,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     if (_user == null) {
       return Scaffold(
         appBar: AppBar(),
-        body: Center(
+        body: const Center(
           child: Text('User not found'),
         ),
       );
@@ -308,3 +302,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     );
   }
 } 
+
+
+

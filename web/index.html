@@ -31,6 +31,56 @@
 
   <title>frontend</title>
   <link rel="manifest" href="manifest.json">
+  <script>
+    // Suppress verbose console output
+    const originalLog = console.log;
+    const originalWarn = console.warn;
+    const originalError = console.error;
+    
+    const suppressPatterns = [
+      'DDC is about to load',
+      'flutter_map',
+      'ddc_module_loader',
+      'performance on the web',
+      'cancellable_tile_provider',
+      '💡',
+      'Architecture',
+      '┌',
+      '│',
+      '└',
+      'Another exception'
+    ];
+    
+    const filterMessage = (message) => {
+      return suppressPatterns.some(pattern => 
+        String(message).includes(pattern)
+      );
+    };
+    
+    console.log = function(...args) {
+      if (!filterMessage(args.join(' '))) {
+        originalLog.apply(console, args);
+      }
+    };
+    
+    console.warn = function(...args) {
+      if (!filterMessage(args.join(' '))) {
+        originalWarn.apply(console, args);
+      }
+    };
+    
+    console.error = function(...args) {
+      // Suppress 404 errors and image loading errors
+      const msg = args.join(' ');
+      if (!msg.includes('404') && 
+          !msg.includes('HTTP request failed') &&
+          !msg.includes('NetworkImageLoadException') &&
+          !msg.includes('statusCode') &&
+          !filterMessage(msg)) {
+        originalError.apply(console, args);
+      }
+    };
+  </script>
 </head>
 <body>
   <script src="flutter_bootstrap.js" async></script>
