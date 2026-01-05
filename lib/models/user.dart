@@ -47,8 +47,9 @@ class User {
   }
 
   factory User.fromJson(Map<String, dynamic> json) {
-    String? profilePicture = json['profilePicture'];
-    profilePicture = UrlUtils.buildStaticUrl(profilePicture);
+    String? rawProfile = json['profilePicture'];
+    final built = UrlUtils.buildStaticUrl(rawProfile);
+    final String? profilePicture = built.isNotEmpty ? built : null;
 
     return User(
       id: json['id'] ?? json['_id'] ?? '',

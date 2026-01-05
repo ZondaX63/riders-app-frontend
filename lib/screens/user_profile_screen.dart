@@ -30,7 +30,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   void initState() {
     super.initState();
     _loadUserData();
-    _checkFollowStatus();
   }
 
   Future<void> _loadUserData() async {
@@ -40,6 +39,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         _user = user;
         _isLoading = false;
       });
+      // After user is loaded, check follow status (must run after _user is set)
+      await _checkFollowStatus();
     } catch (e) {
       setState(() {
         _error = e.toString();

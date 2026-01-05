@@ -100,6 +100,19 @@ class PostApiService extends BaseApiService {
       await dio.post('$baseUrl/posts/$postId/like');
     } on DioException catch (e) {
       log('DioException in likePost: ${e.message}');
+      // If the server responds that the post is already liked, treat as success (idempotent)
+      final status = e.response?.statusCode;
+      final data = e.response?.data;
+      if (status == 400 && data != null && data['error'] != null && data['error']['code'] == 'ALREADY_LIKED') {
+        log('Post already liked, ignoring error');
+        return;
+      }
+
+      // Bubble up server message when available
+      if (data != null && data['error'] != null && data['error']['message'] != null) {
+        throw Exception(data['error']['message']);
+      }
+
       throw Exception('Failed to like post');
     }
   }
@@ -130,16 +143,21 @@ class PostApiService extends BaseApiService {
       final response = await dio.get('$baseUrl/posts/$postId/comments');
 
       if (!response.data['success']) {
+        // If comments route returns not found, treat as empty list
         throw Exception('Failed to get comments');
       }
 
-      final comments = (response.data['data']['comments'] as List)
-          .map((comment) => comment_model.Comment.fromJson(comment))
-          .toList();
-
+      final commentsList = response.data['data']['comments'] as List? ?? [];
+      final comments = commentsList.map((comment) => comment_model.Comment.fromJson(comment)).toList();
       return comments;
     } on DioException catch (e) {
       log('DioException in getComments: ${e.message}');
+      final status = e.response?.statusCode;
+      // If post/comments not found, return empty list instead of throwing to avoid crashing UI
+      if (status == 404) {
+        log('Comments not found for post $postId, returning empty list');
+        return <comment_model.Comment>[];
+      }
       throw Exception('Failed to get comments');
     }
   }

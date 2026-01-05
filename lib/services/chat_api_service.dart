@@ -137,7 +137,13 @@ class ChatApiService extends BaseApiService {
         throw Exception('Failed to create or get chat');
       }
 
-      return Chat.fromJson(response.data['data']['chat']);
+      // backend may return the conversation under 'chat' or 'conversation'
+      final convoData = response.data['data']['chat'] ?? response.data['data']['conversation'];
+      if (convoData == null) {
+        throw Exception('Invalid chat data received from server');
+      }
+
+      return Chat.fromJson(convoData as Map<String, dynamic>);
     } on DioException catch (e) {
       log('DioException in getOrCreateChat: ${e.message}');
       throw Exception('Failed to create or get chat');
