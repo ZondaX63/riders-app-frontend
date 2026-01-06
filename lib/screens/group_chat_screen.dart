@@ -38,7 +38,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   void initState() {
     super.initState();
     _loadData();
-    _setupSocket();
+    // Socket setup moved to _loadData after membership check
   }
 
   void _setupSocket() {
@@ -66,6 +66,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     super.dispose();
   }
 
+  bool _isMember = false;
+
   Future<void> _loadData() async {
     setState(() {
       _isLoading = true;
@@ -74,20 +76,29 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
 
     try {
       final apiService = context.read<ApiService>();
+      final currentUser = context.read<AuthProvider>().currentUser;
+
       final groupData = await apiService.getGroupChat(widget.groupId);
-      final messagesData = await apiService.getGroupMessages(widget.groupId);
+      _groupDetail = GroupChat.fromJson(groupData);
+
+      _isMember =
+          _groupDetail!.members.any((m) => m.user.id == currentUser?.id);
+
+      if (_isMember) {
+        final messagesData = await apiService.getGroupMessages(widget.groupId);
+        _messages = (messagesData as List)
+            .map((e) => GroupMessage.fromJson(e))
+            .toList()
+            .reversed
+            .toList();
+        _setupSocket();
+      }
 
       if (mounted) {
         setState(() {
-          _groupDetail = GroupChat.fromJson(groupData);
-          _messages = (messagesData as List)
-              .map((e) => GroupMessage.fromJson(e))
-              .toList()
-              .reversed
-              .toList();
           _isLoading = false;
         });
-        _scrollToBottom();
+        if (_isMember) _scrollToBottom();
       }
     } catch (e) {
       if (mounted) {
@@ -95,6 +106,33 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
           _error = e.toString();
           _isLoading = false;
         });
+      }
+    }
+  }
+
+  Future<void> _joinGroup() async {
+    setState(() => _isLoading = true);
+    try {
+      final currentUser = context.read<AuthProvider>().currentUser;
+      if (currentUser == null) return;
+
+      await context
+          .read<ApiService>()
+          .addGroupMember(widget.groupId, currentUser.id);
+
+      await _loadData(); // Reload to refresh state
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Gruba katıldınız!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Katılma hatası: $e')),
+        );
+        setState(() => _isLoading = false);
       }
     }
   }
@@ -256,8 +294,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(8),
                 color: _groupDetail!.rideStatus == 'active'
-                    ? Colors.green.withOpacity(0.2)
-                    : Colors.blue.withOpacity(0.2),
+                    ? Colors.green.withValues(alpha: 0.2)
+                    : Colors.blue.withValues(alpha: 0.2),
                 child: Center(
                   child: Text(
                     _groupDetail!.rideStatus == 'active'
@@ -342,7 +380,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
+                        color: Colors.black.withValues(alpha: 0.1),
                         blurRadius: 4,
                         offset: const Offset(0, 2),
                       ),
@@ -363,7 +401,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                       Text(
                         _formatTime(message.createdAt),
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.7),
+                          color: Colors.white.withValues(alpha: 0.7),
                           fontSize: 10,
                         ),
                       ),
@@ -379,13 +417,52 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   }
 
   Widget _buildInput() {
+    if (!_isMember) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 4,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          child: SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _joinGroup,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryOrange,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text(
+                'Gruba Katıl',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 4,
             offset: const Offset(0, -2),
           ),

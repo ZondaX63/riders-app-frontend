@@ -96,6 +96,7 @@ class _LiveRideScreenState extends State<LiveRideScreen> {
     super.dispose();
   }
 
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
@@ -188,7 +189,7 @@ class _LiveRideScreenState extends State<LiveRideScreen> {
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppTheme.darkGrey.withOpacity(0.9),
+                color: AppTheme.darkGrey.withValues(alpha: 0.9),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Column(

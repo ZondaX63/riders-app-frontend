@@ -173,7 +173,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                 subtitle: const Text('Sadece davet edilenler katılabilir'),
                 value: _isPrivate,
                 onChanged: (v) => setState(() => _isPrivate = v),
-                activeColor: AppTheme.primaryOrange,
+                activeTrackColor: AppTheme.primaryOrange,
                 contentPadding: EdgeInsets.zero,
               ),
 
@@ -202,7 +202,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                               });
                             },
                             backgroundColor:
-                                AppTheme.primaryOrange.withOpacity(0.2),
+                                AppTheme.primaryOrange.withValues(alpha: 0.2),
                             labelStyle: const TextStyle(color: Colors.white),
                           ))
                       .toList(),

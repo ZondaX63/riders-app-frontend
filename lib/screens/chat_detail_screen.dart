@@ -47,7 +47,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         _isLoading = true;
         _error = null;
       });
-      
+
       final messages = await _apiService.getChatMessages(widget.chat.id);
 
       setState(() {
@@ -104,7 +104,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         }
       });
     } catch (e) {
-      
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to send message')),
       );
@@ -115,10 +114,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     try {
       final picker = ImagePicker();
       final image = await picker.pickImage(source: source);
-      if (image != null) {
-      }
+      if (image != null) {}
     } catch (e) {
-      
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to pick image')),
       );
@@ -139,7 +136,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         }
       });
     } catch (e) {
-      
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to delete message')),
       );
@@ -215,7 +211,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                           context: context,
                           builder: (context) => AlertDialog(
                             title: const Text('Sohbeti Temizle'),
-                            content: const Text('Tüm mesajlar silinecek. Bu işlem geri alınamaz.'),
+                            content: const Text(
+                                'Tüm mesajlar silinecek. Bu işlem geri alınamaz.'),
                             actions: [
                               TextButton(
                                 onPressed: () => Navigator.pop(context),
@@ -224,21 +221,29 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                               TextButton(
                                 onPressed: () async {
                                   try {
-                                    await _apiService.deleteChat(widget.chat.id);
+                                    await _apiService
+                                        .deleteChat(widget.chat.id);
                                     if (mounted) {
                                       Navigator.pop(context); // Close dialog
-                                      Navigator.pop(context); // Return to chat list
-                                      
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(content: Text('Sohbet başarıyla silindi')),
+                                      Navigator.pop(
+                                          context); // Return to chat list
+
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        const SnackBar(
+                                            content: Text(
+                                                'Sohbet başarıyla silindi')),
                                       );
                                     }
                                   } catch (e) {
                                     if (mounted) {
                                       Navigator.pop(context); // Close dialog
-                                      
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(content: Text('Sohbet silinirken bir hata oluştu')),
+
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        const SnackBar(
+                                            content: Text(
+                                                'Sohbet silinirken bir hata oluştu')),
                                       );
                                     }
                                   }
@@ -452,7 +457,9 @@ class MessageBubble extends StatelessWidget {
                   Icon(
                     message.readBy.isNotEmpty ? Icons.done_all : Icons.done,
                     size: 16,
-                    color: message.readBy.isNotEmpty ? Colors.blue : Colors.white70,
+                    color: message.readBy.isNotEmpty
+                        ? Colors.blue
+                        : Colors.white70,
                   ),
                 ],
               ],
@@ -467,6 +474,3 @@ class MessageBubble extends StatelessWidget {
     return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
   }
 }
-
-
-

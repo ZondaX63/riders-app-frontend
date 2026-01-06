@@ -200,7 +200,7 @@ class _ModernProfileScreenState extends State<ModernProfileScreen> {
                             color: AppTheme.lightGrey,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: AppTheme.primaryOrange.withOpacity(0.3),
+                              color: AppTheme.primaryOrange.withValues(alpha: 0.3),
                             ),
                           ),
                           child: Row(
@@ -209,7 +209,7 @@ class _ModernProfileScreenState extends State<ModernProfileScreen> {
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
                                   color:
-                                      AppTheme.primaryOrange.withOpacity(0.2),
+                                      AppTheme.primaryOrange.withValues(alpha: 0.2),
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(
@@ -467,12 +467,12 @@ class _MotorcycleCard extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.two_wheeler,
-                          size: 64, color: Colors.white.withOpacity(0.3)),
+                          size: 64, color: Colors.white.withValues(alpha: 0.3)),
                       const SizedBox(height: 8),
                       Text(
                         'Motor fotoğrafı eklenmemiş',
                         style: TextStyle(
-                            color: Colors.white.withOpacity(0.5), fontSize: 12),
+                            color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
                       ),
                     ],
                   ),

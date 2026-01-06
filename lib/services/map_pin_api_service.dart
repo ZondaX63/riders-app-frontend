@@ -3,7 +3,7 @@ import 'base_api_service.dart';
 import '../models/map_pin.dart';
 
 /// MapPin API Service
-/// 
+///
 /// SRP: Sadece harita pin işlemlerinden sorumlu
 /// - Create MapPin
 /// - Get Nearby MapPins
@@ -79,7 +79,7 @@ class MapPinApiService extends BaseApiService {
 
   Future<List<MapPin>> getMyMapPins() async {
     try {
-      final response = await dio.get('$baseUrl/map-pins/my-pins');
+      final response = await dio.get('$baseUrl/map-pins/mine');
 
       if (!response.data['success']) {
         throw Exception('Failed to get map pins');

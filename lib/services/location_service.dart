@@ -18,19 +18,19 @@ class LocationService {
   // Request location permission
   Future<LocationPermission> requestPermission() async {
     LocationPermission permission = await Geolocator.checkPermission();
-    
+
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
     }
-    
+
     return permission;
   }
 
   // Check location permission status
   Future<bool> hasPermission() async {
     final permission = await Geolocator.checkPermission();
-    return permission == LocationPermission.always || 
-           permission == LocationPermission.whileInUse;
+    return permission == LocationPermission.always ||
+        permission == LocationPermission.whileInUse;
   }
 
   // Get current location
@@ -42,15 +42,17 @@ class LocationService {
       }
 
       final permission = await requestPermission();
-      if (permission == LocationPermission.denied || 
+      if (permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever) {
         throw Exception('Location permission denied');
       }
 
       final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
       );
-      
+
       _lastPosition = position;
       return position;
     } catch (e) {
@@ -69,14 +71,14 @@ class LocationService {
     final hasPermissions = await hasPermission();
     if (!hasPermissions) {
       final permission = await requestPermission();
-      if (permission != LocationPermission.always && 
+      if (permission != LocationPermission.always &&
           permission != LocationPermission.whileInUse) {
         throw Exception('Location permission required');
       }
     }
 
     _isTracking = true;
-    
+
     // Send initial location
     await _updateLocation(isVisible);
 
@@ -97,7 +99,9 @@ class LocationService {
   Future<void> _updateLocation(bool isVisible) async {
     try {
       final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
       );
 
       _lastPosition = position;
@@ -171,7 +175,7 @@ class LocationService {
       accuracy: LocationAccuracy.high,
       distanceFilter: 10, // Update every 10 meters
     );
-    
+
     return Geolocator.getPositionStream(locationSettings: locationSettings);
   }
 

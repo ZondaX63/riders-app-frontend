@@ -88,7 +88,7 @@ class _SOSButtonState extends State<SOSButton>
               color: Colors.red,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.red.withOpacity(0.6),
+                  color: Colors.red.withValues(alpha: 0.6),
                   blurRadius: 10 + (_controller.value * 10),
                   spreadRadius: 2 + (_controller.value * 5),
                 )

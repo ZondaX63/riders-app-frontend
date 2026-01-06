@@ -199,7 +199,7 @@ class _RidersExploreTabState extends State<RidersExploreTab> {
             color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 10,
                 offset: const Offset(0, 2),
               ),
@@ -345,7 +345,7 @@ class _RidersExploreTabState extends State<RidersExploreTab> {
                                   borderRadius: BorderRadius.circular(12),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.03),
+                                      color: Colors.black.withValues(alpha: 0.03),
                                       blurRadius: 8,
                                       offset: const Offset(0, 2),
                                     ),
@@ -385,7 +385,7 @@ class _RidersExploreTabState extends State<RidersExploreTab> {
                                           decoration: BoxDecoration(
                                             color: Theme.of(context)
                                                 .primaryColor
-                                                .withOpacity(0.1),
+                                                .withValues(alpha: 0.1),
                                             borderRadius: BorderRadius.circular(12),
                                           ),
                                           child: Text(

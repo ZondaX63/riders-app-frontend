@@ -142,7 +142,7 @@ class _StoryViewScreenState extends State<StoryViewScreen> {
                             value: index < _currentIndex
                                 ? 1.0
                                 : (index == _currentIndex ? _progress : 0.0),
-                            backgroundColor: Colors.white.withOpacity(0.3),
+                            backgroundColor: Colors.white.withValues(alpha: 0.3),
                             valueColor: const AlwaysStoppedAnimation<Color>(
                                 Colors.white),
                             minHeight: 2,

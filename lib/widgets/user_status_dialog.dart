@@ -162,7 +162,7 @@ class _UserStatusDialogState extends State<UserStatusDialog> {
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? AppTheme.primaryOrange.withOpacity(0.1)
+                          ? AppTheme.primaryOrange.withValues(alpha: 0.1)
                           : AppTheme.lightGrey,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
@@ -177,7 +177,7 @@ class _UserStatusDialogState extends State<UserStatusDialog> {
                         Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: (status['color'] as Color).withOpacity(0.2),
+                            color: (status['color'] as Color).withValues(alpha: 0.2),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(

@@ -1,0 +1,6 @@
+Analyzing frontend...                                           
+
+   info • Missing type annotation • lib/screens/edit_profile_screen.dart:307:24 • strict_top_level_inference
+   info • The member 'build' overrides an inherited member but isn't annotated with '@override' • lib/screens/live_ride_screen.dart:99:10 • annotate_overrides
+   info • Statements in an if should be enclosed in a block • lib/services/base_api_service.dart:99:7 • curly_braces_in_flow_control_structures
+

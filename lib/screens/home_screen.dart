@@ -243,7 +243,7 @@ class _HomeScreenState extends State<HomeScreen>
                       Icons.error_outline,
                       size: 64,
                       color:
-                          Theme.of(context).colorScheme.error.withOpacity(0.5),
+                          Theme.of(context).colorScheme.error.withValues(alpha: 0.5),
                     ),
                     const SizedBox(height: 16),
                     Text(
@@ -272,14 +272,14 @@ class _HomeScreenState extends State<HomeScreen>
                               ? Icons.people_outline
                               : Icons.explore_outlined,
                           size: 64,
-                          color: Colors.white.withOpacity(0.3),
+                          color: Colors.white.withValues(alpha: 0.3),
                         ),
                         const SizedBox(height: 16),
                         Text(
                           emptyMessage,
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.6),
+                            color: Colors.white.withValues(alpha: 0.6),
                             fontSize: 16,
                           ),
                         ),

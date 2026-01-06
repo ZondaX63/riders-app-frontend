@@ -8,6 +8,7 @@ import 'notification_api_service.dart';
 import 'story_api_service.dart';
 import 'route_api_service.dart';
 import 'group_chat_api_service.dart';
+import '../models/message.dart';
 import 'base_api_service.dart';
 
 /// Unified API Service - Facade Pattern
@@ -83,7 +84,7 @@ class ApiService extends BaseApiService {
   // Chat methods
   Future getChats() => chats.getChats();
   Future getChatMessages(String chatId) => chats.getChatMessages(chatId);
-  Future sendMessage(chatId, content, type) =>
+  Future sendMessage(String chatId, String content, MessageType type) =>
       chats.sendMessage(chatId, content, type);
   Future<void> markChatAsRead(String chatId) => chats.markChatAsRead(chatId);
   Future<void> deleteMessage(

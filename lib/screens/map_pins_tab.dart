@@ -212,7 +212,7 @@ class _MapPinsTabState extends State<MapPinsTab>
                       label: Text(entry.value),
                       selected: selected,
                       onSelected: (_) => _toggleType(entry.key),
-                      selectedColor: _pinColor(entry.key).withOpacity(0.2),
+                      selectedColor: _pinColor(entry.key).withValues(alpha: 0.2),
                       checkmarkColor: Colors.white,
                     ),
                   );
@@ -325,7 +325,7 @@ class _MapPinsTabState extends State<MapPinsTab>
                       left: 16,
                       right: 16,
                       child: Card(
-                        color: Colors.redAccent.withOpacity(0.2),
+                        color: Colors.redAccent.withValues(alpha: 0.2),
                         child: Padding(
                           padding: const EdgeInsets.all(12),
                           child: Text(error,
@@ -356,7 +356,7 @@ class _MapPinsTabState extends State<MapPinsTab>
                             color: Theme.of(context).colorScheme.surface,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                                color: _pinColor(pin.type).withOpacity(0.4)),
+                                color: _pinColor(pin.type).withValues(alpha: 0.4)),
                           ),
                           padding: const EdgeInsets.all(12),
                           child: Column(
@@ -571,7 +571,7 @@ class _AddPinFormState extends State<_AddPinForm> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
+                  color: Colors.blue.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Column(

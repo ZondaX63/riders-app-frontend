@@ -41,16 +41,8 @@ class WebRTCService {
     });
 
     _socketService.voiceExistingUsersStream.listen((users) {
-      for (var socketId in users) {
-        // We are the joiner, we wait for offers or we initiate?
-        // In simple mesh, usually joiner initiates or listeners initiate.
-        // Let's say existing users initiate offer when they see 'user-joined'.
-        // But if we are the joiner, we might also want to connect.
-        // Actually, usually the one who joins initiates offers to everyone?
-        // Or everyone initiates to the joiner.
-        // My implementation of 'voice:user-joined' makes existing users create offer.
-        // So joiner just waits.
-      }
+      // Existing users handling: the existing users will initiate offers when we join('user-joined').
+      // So as a joiner, we just wait.
     });
   }
 

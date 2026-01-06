@@ -55,8 +55,7 @@ abstract class BaseApiService {
           }
         }
 
-        if (error.response?.statusCode == 401 ||
-            error.response?.statusCode == 403) {
+        if (error.response?.statusCode == 401) {
           await storage.delete(key: 'token');
         }
         return handler.next(error);
@@ -67,9 +66,7 @@ abstract class BaseApiService {
   bool _shouldRetry(DioException error) {
     return error.type == DioExceptionType.connectionTimeout ||
         error.type == DioExceptionType.sendTimeout ||
-        error.type == DioExceptionType.receiveTimeout ||
-        (error.response?.statusCode != null &&
-            error.response!.statusCode! >= 500);
+        error.type == DioExceptionType.receiveTimeout;
   }
 
   Future<Response> _retry(RequestOptions requestOptions) {
@@ -95,6 +92,10 @@ abstract class BaseApiService {
 
   String buildStaticUrl(String path) {
     if (path.isEmpty) return '';
+    if (path.startsWith('http')) {
+      return path; // Return as-is if it's already a full URL
+    }
+
     final normalized = path.replaceAll('\\', '/');
     final withPrefix =
         normalized.startsWith('uploads/') ? normalized : 'uploads/$normalized';
