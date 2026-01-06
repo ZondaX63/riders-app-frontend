@@ -9,6 +9,7 @@ import '../widgets/async_state_builder.dart';
 import '../screens/create_route_screen.dart';
 import '../screens/route_details_screen.dart';
 import '../screens/group_chat_screen.dart';
+import '../screens/create_group_screen.dart';
 
 class GroupRidesScreen extends StatefulWidget {
   const GroupRidesScreen({super.key});
@@ -44,23 +45,57 @@ class _GroupRidesScreenState extends State<GroupRidesScreen> {
             _GroupsTab(),
           ],
         ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: () async {
-            final result = await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const CreateRouteScreen(),
-              ),
-            );
-            if (result == true) {
-              // Usually we'd want to refresh the routes tab.
-              // Using a simple event bus or provider would be better,
-              // but for now, we'll just let the user pull to refresh.
-            }
+        floatingActionButton: FloatingActionButton(
+          onPressed: () {
+            _showCreateOptions(context);
           },
-          icon: const Icon(Icons.add),
-          label: const Text('Rota Paylaş'),
           backgroundColor: AppTheme.primaryOrange,
+          child: const Icon(Icons.add, color: Colors.black),
+        ),
+      ),
+    );
+  }
+
+  void _showCreateOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppTheme.darkGrey,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.map, color: AppTheme.primaryOrange),
+              title: const Text('Rota Planla'),
+              subtitle: const Text('Yeni bir sürüş rotası oluştur'),
+              onTap: () async {
+                Navigator.pop(context);
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const CreateRouteScreen()),
+                );
+                // Refresh if needed
+              },
+            ),
+            ListTile(
+              leading:
+                  const Icon(Icons.group_add, color: AppTheme.primaryOrange),
+              title: const Text('Grup Oluştur'),
+              subtitle: const Text('Yeni bir sürüş grubu kur'),
+              onTap: () async {
+                Navigator.pop(context);
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const CreateGroupScreen()),
+                );
+                // Refresh if needed (GroupsTab should auto-refresh or uses pull-to-refresh)
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
         ),
       ),
     );

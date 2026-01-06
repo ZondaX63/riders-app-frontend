@@ -10,6 +10,7 @@ class User {
   final List<String> following;
   final String? bio;
   final Map<String, dynamic>? motorcycleInfo;
+  final Map<String, dynamic>? status;
   final String role;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -24,6 +25,7 @@ class User {
     required this.following,
     this.bio,
     this.motorcycleInfo,
+    this.status,
     required this.role,
     required this.createdAt,
     required this.updatedAt,
@@ -40,6 +42,7 @@ class User {
       following: [],
       bio: null,
       motorcycleInfo: null,
+      status: null,
       role: 'user',
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
@@ -61,9 +64,14 @@ class User {
       following: List<String>.from(json['following'] ?? []),
       bio: json['bio'],
       motorcycleInfo: json['motorcycleInfo'],
+      status: json['status'],
       role: json['role'] ?? 'user',
-      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(),
-      updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : DateTime.now(),
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'])
+          : DateTime.now(),
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.parse(json['updatedAt'])
+          : DateTime.now(),
     );
   }
 
@@ -78,6 +86,7 @@ class User {
       'following': following,
       'bio': bio,
       'motorcycleInfo': motorcycleInfo,
+      'status': status,
       'role': role,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
@@ -92,6 +101,7 @@ class User {
     String? profilePicture,
     String? bio,
     Map<String, dynamic>? motorcycleInfo,
+    Map<String, dynamic>? status,
     List<String>? followers,
     List<String>? following,
     String? role,
@@ -106,6 +116,7 @@ class User {
       profilePicture: profilePicture ?? this.profilePicture,
       bio: bio ?? this.bio,
       motorcycleInfo: motorcycleInfo ?? this.motorcycleInfo,
+      status: status ?? this.status,
       followers: followers ?? this.followers,
       following: following ?? this.following,
       role: role ?? this.role,
@@ -113,4 +124,4 @@ class User {
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
-} 
+}

@@ -62,13 +62,15 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  Future<void> register(String username, String email, String password, String fullName) async {
+  Future<void> register(
+      String username, String email, String password, String fullName) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      final response = await _apiService.register(username, email, password, fullName);
+      final response =
+          await _apiService.register(username, email, password, fullName);
       _currentUser = User.fromJson(response['user']);
       _token = response['token'];
       await _prefs.setString('user', jsonEncode(_currentUser!.toJson()));
@@ -116,13 +118,15 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  Future<void> updateProfile(String fullName, String bio, [Map<String, dynamic>? motorcycleInfo]) async {
+  Future<void> updateProfile(String fullName, String bio,
+      [Map<String, dynamic>? motorcycleInfo]) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      final updatedUser = await _apiService.updateProfile(fullName, bio, motorcycleInfo);
+      final updatedUser =
+          await _apiService.updateProfile(fullName, bio, motorcycleInfo);
       _currentUser = updatedUser;
       await _prefs.setString('user', jsonEncode(_currentUser!.toJson()));
       notifyListeners();
@@ -154,6 +158,24 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  Future<void> updateUserStatus({String? message, String? customText}) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      final updatedUser = await _apiService.updateUserStatus(
+          message: message ?? '', customText: customText);
+      _currentUser = updatedUser;
+      await _prefs.setString('user', jsonEncode(_currentUser!.toJson()));
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<bool> checkAuthStatus() async {
     try {
       final token = await _storage.read(key: 'token');
@@ -170,4 +192,4 @@ class AuthProvider with ChangeNotifier {
       return false;
     }
   }
-} 
+}

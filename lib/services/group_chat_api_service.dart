@@ -85,4 +85,20 @@ class GroupChatApiService extends BaseApiService {
       rethrow;
     }
   }
+
+  Future<void> addMember(String groupId, String userId) async {
+    try {
+      await dio.post('/group-chats/$groupId/members', data: {'userId': userId});
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> removeMember(String groupId, String userId) async {
+    try {
+      await dio.delete('/group-chats/$groupId/members/$userId');
+    } catch (e) {
+      rethrow;
+    }
+  }
 }

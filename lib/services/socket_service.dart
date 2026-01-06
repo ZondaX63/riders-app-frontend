@@ -57,6 +57,29 @@ class SocketService extends ChangeNotifier {
   Stream<List<dynamic>> get voiceExistingUsersStream =>
       _voiceExistingUsersController.stream;
 
+  // Chat Streams
+  final _messageReceivedController =
+      StreamController<Map<String, dynamic>>.broadcast();
+  final _groupMessageReceivedController =
+      StreamController<Map<String, dynamic>>.broadcast();
+  final _messageReadController =
+      StreamController<Map<String, dynamic>>.broadcast();
+  final _notificationReceivedController =
+      StreamController<Map<String, dynamic>>.broadcast();
+  final _locationUpdateController =
+      StreamController<Map<String, dynamic>>.broadcast();
+
+  Stream<Map<String, dynamic>> get messageReceivedStream =>
+      _messageReceivedController.stream;
+  Stream<Map<String, dynamic>> get groupMessageReceivedStream =>
+      _groupMessageReceivedController.stream;
+  Stream<Map<String, dynamic>> get messageReadStream =>
+      _messageReadController.stream;
+  Stream<Map<String, dynamic>> get notificationReceivedStream =>
+      _notificationReceivedController.stream;
+  Stream<Map<String, dynamic>> get locationUpdateStream =>
+      _locationUpdateController.stream;
+
   bool get isConnected => _socket?.connected == true;
   String? get currentUserId => _currentUserId;
 
@@ -181,9 +204,42 @@ class SocketService extends ChangeNotifier {
       ..on(
           'voice:candidate',
           (data) =>
-              _voiceCandidateController.add(Map<String, dynamic>.from(data)));
+              _voiceCandidateController.add(Map<String, dynamic>.from(data)))
+      ..on('message:received', (data) {
+        if (data is Map) {
+          _messageReceivedController.add(Map<String, dynamic>.from(data));
+        }
+      })
+      ..on('newMessage', (data) {
+        if (data is Map) {
+          _groupMessageReceivedController.add(Map<String, dynamic>.from(data));
+        }
+      })
+      ..on('message:read', (data) {
+        if (data is Map) {
+          _messageReadController.add(Map<String, dynamic>.from(data));
+        }
+      })
+      ..on('notification:received', (data) {
+        if (data is Map) {
+          _notificationReceivedController.add(Map<String, dynamic>.from(data));
+        }
+      })
+      ..on('location:update', (data) {
+        if (data is Map) {
+          _locationUpdateController.add(Map<String, dynamic>.from(data));
+        }
+      });
 
     _socket!.connect();
+  }
+
+  void subscribeToLocation(String userId) {
+    _socket?.emit('location:subscribe', {'userId': userId});
+  }
+
+  void unsubscribeFromLocation(String userId) {
+    _socket?.emit('location:unsubscribe', {'userId': userId});
   }
 
   void _disconnect() {
@@ -251,6 +307,9 @@ class SocketService extends ChangeNotifier {
     _voiceAnswerController.close();
     _voiceCandidateController.close();
     _voiceExistingUsersController.close();
+    _messageReceivedController.close();
+    _groupMessageReceivedController.close();
+    _messageReadController.close();
     _disconnect();
     super.dispose();
   }

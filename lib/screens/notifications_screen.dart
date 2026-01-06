@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../services/notification_api_service.dart';
 import '../models/notification.dart';
 import '../widgets/async_state_builder.dart';
 import 'user_profile_screen.dart';
+import '../services/socket_service.dart';
+import 'dart:async';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -17,11 +20,33 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   List<AppNotification> _notifications = [];
   bool _isLoading = true;
   String? _error;
+  StreamSubscription? _socketSubscription;
 
   @override
   void initState() {
     super.initState();
     _loadNotifications();
+    _setupSocket();
+  }
+
+  void _setupSocket() {
+    _socketSubscription =
+        context.read<SocketService>().notificationReceivedStream.listen((data) {
+      if (mounted) {
+        setState(() {
+          final notification = AppNotification.fromJson(data['notification']);
+          if (!_notifications.any((n) => n.id == notification.id)) {
+            _notifications.insert(0, notification);
+          }
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _socketSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadNotifications() async {
@@ -63,7 +88,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Tüm bildirimler okundu olarak işaretlendi')),
+          const SnackBar(
+              content: Text('Tüm bildirimler okundu olarak işaretlendi')),
         );
       }
     } catch (e) {
@@ -110,7 +136,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => UserProfileScreen(userId: notification.fromUser.id),
+        builder: (context) =>
+            UserProfileScreen(userId: notification.fromUser.id),
       ),
     );
   }
@@ -212,10 +239,12 @@ class _NotificationTile extends StatelessWidget {
       borderRadius: BorderRadius.circular(14),
       child: Container(
         decoration: BoxDecoration(
-          color: notification.read ? AppTheme.lightGrey : AppTheme.lightGrey.withValues(alpha: 0.8),
+          color: notification.read
+              ? AppTheme.lightGrey
+              : AppTheme.lightGrey.withValues(alpha: 0.8),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: notification.read 
+            color: notification.read
                 ? Colors.white.withValues(alpha: 0.05)
                 : AppTheme.primaryOrange.withValues(alpha: 0.3),
           ),
@@ -228,10 +257,12 @@ class _NotificationTile extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 24,
-                  backgroundImage: notification.fromUser.profilePicture != null &&
-                          notification.fromUser.profilePicture!.isNotEmpty
-                      ? NetworkImage(apiService.buildStaticUrl(notification.fromUser.profilePicture!))
-                      : null,
+                  backgroundImage:
+                      notification.fromUser.profilePicture != null &&
+                              notification.fromUser.profilePicture!.isNotEmpty
+                          ? NetworkImage(apiService.buildStaticUrl(
+                              notification.fromUser.profilePicture!))
+                          : null,
                   child: notification.fromUser.profilePicture == null ||
                           notification.fromUser.profilePicture!.isEmpty
                       ? Icon(icon, color: iconColor)
@@ -305,6 +336,3 @@ class _NotificationTile extends StatelessWidget {
     );
   }
 }
-
-
-

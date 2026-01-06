@@ -234,4 +234,12 @@ class ApiService extends BaseApiService {
       groupChats.attachRoute(groupId, routeId);
   Future<void> updateGroupRideStatus(String groupId, String status) =>
       groupChats.updateRideStatus(groupId, status);
+
+  Future<List<Map<String, dynamic>>> getUserPosts(String userId) =>
+      users.getUserPosts(userId);
+
+  Future<void> addGroupMember(String groupId, String userId) =>
+      groupChats.addMember(groupId, userId);
+  Future<void> removeGroupMember(String groupId, String userId) =>
+      groupChats.removeMember(groupId, userId);
 }

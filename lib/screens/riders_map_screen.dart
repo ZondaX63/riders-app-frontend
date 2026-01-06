@@ -5,6 +5,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import '../services/location_service.dart';
 import '../services/api_service.dart';
+import '../services/socket_service.dart';
+import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/async_state_builder.dart';
 import '../widgets/profile_avatar.dart';
@@ -25,7 +27,7 @@ class _RidersMapScreenState extends State<RidersMapScreen> {
   final MapController _mapController = MapController();
   late final LocationService _locationService;
   late final ApiService _apiService;
-  
+
   List<dynamic> _nearbyRiders = [];
   LatLng _currentCenter = _defaultCenter;
   Position? _myPosition;
@@ -40,14 +42,50 @@ class _RidersMapScreenState extends State<RidersMapScreen> {
     super.initState();
     _apiService = ApiService();
     _locationService = LocationService(_apiService);
+    _locationService = LocationService(_apiService);
     _initialize();
+
+    // Defer socket setup until after build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _setupSocketListener();
+    });
   }
 
   @override
   void dispose() {
     _locationService.dispose();
     _refreshTimer?.cancel();
+    _unsubscribeFromAll();
     super.dispose();
+  }
+
+  void _unsubscribeFromAll() {
+    final socketService = context.read<SocketService>();
+    for (var rider in _nearbyRiders) {
+      final userId = rider['user']['id'] ?? rider['user']['_id'];
+      socketService.unsubscribeFromLocation(userId);
+    }
+  }
+
+  void _setupSocketListener() {
+    context.read<SocketService>().locationUpdateStream.listen((data) {
+      if (!mounted) return;
+      setState(() {
+        final index = _nearbyRiders.indexWhere((r) {
+          final rId = r['user']['id'] ?? r['user']['_id'];
+          final uId = data['user']['id'] ?? data['user']['_id'];
+          return rId == uId;
+        });
+
+        if (index != -1) {
+          _nearbyRiders[index] = data;
+        } else {
+          // Optional: Add new rider if nearby logic permits,
+          // but usually we rely on _loadNearbyRiders for discovery
+          // and socket for updates.
+        }
+      });
+    });
   }
 
   Future<void> _initialize() async {
@@ -61,7 +99,7 @@ class _RidersMapScreenState extends State<RidersMapScreen> {
       final hasPermission = await _locationService.hasPermission();
       if (!hasPermission) {
         final permission = await _locationService.requestPermission();
-        if (permission != LocationPermission.always && 
+        if (permission != LocationPermission.always &&
             permission != LocationPermission.whileInUse) {
           throw Exception('Konum izni gerekli');
         }
@@ -104,7 +142,8 @@ class _RidersMapScreenState extends State<RidersMapScreen> {
 
   Future<void> _loadNearbyRiders() async {
     try {
-      final position = _myPosition ?? await _locationService.getCurrentLocation();
+      final position =
+          _myPosition ?? await _locationService.getCurrentLocation();
       if (position == null) return;
 
       final riders = await _locationService.getNearbyUsers(
@@ -116,8 +155,19 @@ class _RidersMapScreenState extends State<RidersMapScreen> {
       setState(() {
         _nearbyRiders = riders;
       });
+
+      _subscribeToRiders(riders);
     } catch (e) {
       print('Error loading nearby riders: $e');
+    }
+  }
+
+  void _subscribeToRiders(List<dynamic> riders) {
+    if (!mounted) return;
+    final socketService = context.read<SocketService>();
+    for (var rider in riders) {
+      final userId = rider['user']['id'] ?? rider['user']['_id'];
+      socketService.subscribeToLocation(userId);
     }
   }
 
@@ -148,12 +198,11 @@ class _RidersMapScreenState extends State<RidersMapScreen> {
       final newVisibility = !_isVisible;
       await _locationService.toggleVisibility(newVisibility);
       setState(() => _isVisible = newVisibility);
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            newVisibility ? 'Haritada görünürsünüz' : 'Haritada gizlisiniz'
-          ),
+              newVisibility ? 'Haritada görünürsünüz' : 'Haritada gizlisiniz'),
           backgroundColor: newVisibility ? Colors.green : Colors.orange,
         ),
       );
@@ -186,8 +235,6 @@ class _RidersMapScreenState extends State<RidersMapScreen> {
     }
   }
 
-
-
   void _showRiderInfo(dynamic riderLocation) {
     final rider = riderLocation['user'];
     showModalBottomSheet(
@@ -203,10 +250,13 @@ class _RidersMapScreenState extends State<RidersMapScreen> {
           children: [
             CircleAvatar(
               radius: 40,
-              backgroundImage: rider['profilePicture'] != null && rider['profilePicture'].isNotEmpty
-                  ? NetworkImage(_apiService.buildStaticUrl(rider['profilePicture']))
+              backgroundImage: rider['profilePicture'] != null &&
+                      rider['profilePicture'].isNotEmpty
+                  ? NetworkImage(
+                      _apiService.buildStaticUrl(rider['profilePicture']))
                   : null,
-              child: rider['profilePicture'] == null || rider['profilePicture'].isEmpty
+              child: rider['profilePicture'] == null ||
+                      rider['profilePicture'].isEmpty
                   ? const Icon(Icons.person, size: 40)
                   : null,
             ),
@@ -226,7 +276,7 @@ class _RidersMapScreenState extends State<RidersMapScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            
+
             // Motorcycle info
             if (rider['motorcycleInfo'] != null)
               Container(
@@ -237,7 +287,8 @@ class _RidersMapScreenState extends State<RidersMapScreen> {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.two_wheeler, color: AppTheme.primaryOrange),
+                    const Icon(Icons.two_wheeler,
+                        color: AppTheme.primaryOrange),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
@@ -248,9 +299,9 @@ class _RidersMapScreenState extends State<RidersMapScreen> {
                   ],
                 ),
               ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Distance info
             if (_myPosition != null)
               Container(
@@ -273,7 +324,7 @@ class _RidersMapScreenState extends State<RidersMapScreen> {
               ),
 
             const SizedBox(height: 24),
-            
+
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -282,7 +333,8 @@ class _RidersMapScreenState extends State<RidersMapScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => UserProfileScreen(userId: rider['id']),
+                      builder: (context) =>
+                          UserProfileScreen(userId: rider['id']),
                     ),
                   );
                 },
@@ -344,13 +396,14 @@ class _RidersMapScreenState extends State<RidersMapScreen> {
               urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
               userAgentPackageName: 'com.example.app',
             ),
-            
+
             // My location marker
             if (_myPosition != null)
               MarkerLayer(
                 markers: [
                   Marker(
-                    point: LatLng(_myPosition!.latitude, _myPosition!.longitude),
+                    point:
+                        LatLng(_myPosition!.latitude, _myPosition!.longitude),
                     width: 50,
                     height: 50,
                     child: const Icon(

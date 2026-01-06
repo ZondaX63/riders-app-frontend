@@ -21,7 +21,8 @@ class _ModernProfileScreenState extends State<ModernProfileScreen> {
   String? _error;
   int _routeCount = 0;
   List<Post> _userPosts = [];
-  int _selectedTab = 0; // 0: Past Rides, 1: Achievements
+  List<dynamic> _userRoutes = [];
+  int _selectedTab = 0; // 0: Past Rides, 1: Routes, 2: Achievements
 
   @override
   void initState() {
@@ -44,15 +45,17 @@ class _ModernProfileScreenState extends State<ModernProfileScreen> {
       final current =
           Provider.of<AuthProvider>(context, listen: false).currentUser;
       if (current == null) return;
-      final feed = await _apiService.getPosts();
-      final userPosts = feed.where((p) => p.userId == current.id).toList();
+
+      final postMaps = await _apiService.getUserPosts(current.id);
+      final userPosts = postMaps.map((m) => Post.fromJson(m)).toList();
 
       final routes = await _apiService.getUserRoutes(current.id);
 
       if (!mounted) return;
       setState(() {
         _userPosts = userPosts;
-        _routeCount = (routes as List).length;
+        _userRoutes = routes as List;
+        _routeCount = _userRoutes.length;
       });
     } catch (e) {
       setState(() => _error = e.toString());
@@ -220,16 +223,26 @@ class _ModernProfileScreenState extends State<ModernProfileScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text(
-                                      'Durumunu Paylaş',
-                                      style: TextStyle(
+                                    Text(
+                                      (user.status?['message'] != null &&
+                                              user.status!['message']
+                                                  .toString()
+                                                  .isNotEmpty)
+                                          ? user.status!['message']
+                                          : 'Durumunu Paylaş',
+                                      style: const TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 14,
                                       ),
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      'Şu an ne yapıyorsun?',
+                                      (user.status?['customText'] != null &&
+                                              user.status!['customText']
+                                                  .toString()
+                                                  .isNotEmpty)
+                                          ? user.status!['customText']
+                                          : 'Şu an ne yapıyorsun?',
                                       style: TextStyle(
                                         color: Colors.grey[400],
                                         fontSize: 12,
@@ -316,16 +329,41 @@ class _ModernProfileScreenState extends State<ModernProfileScreen> {
                             selected: _selectedTab == 0,
                             onTap: () => setState(() => _selectedTab = 0)),
                         _TabButton(
-                            text: 'Achievements',
+                            text: 'Routes',
                             selected: _selectedTab == 1,
                             onTap: () => setState(() => _selectedTab = 1)),
+                        _TabButton(
+                            text: 'Achievements',
+                            selected: _selectedTab == 2,
+                            onTap: () => setState(() => _selectedTab = 2)),
                       ]),
                     ),
                     Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: _selectedTab == 0
                           ? _RidesGrid(posts: _userPosts)
-                          : const _AchievementsPlaceholder(),
+                          : _selectedTab == 1
+                              ? _RoutesList(
+                                  routes: _userRoutes,
+                                  onDelete: (id) async {
+                                    try {
+                                      await _apiService.deleteRoute(id);
+                                      await _loadUserData();
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(const SnackBar(
+                                                content: Text('Rota silindi')));
+                                      }
+                                    } catch (e) {
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(SnackBar(
+                                                content: Text('Hata: $e')));
+                                      }
+                                    }
+                                  },
+                                )
+                              : const _AchievementsPlaceholder(),
                     ),
                     if (_error != null)
                       Padding(
@@ -601,6 +639,69 @@ class _AchievementsPlaceholder extends StatelessWidget {
           border: Border.all(color: Colors.white.withValues(alpha: 0.06))),
       child: const Text('Başarımlar yakında',
           style: TextStyle(color: Colors.white70)),
+    );
+  }
+}
+
+class _RoutesList extends StatelessWidget {
+  final List<dynamic> routes;
+  final Function(String) onDelete;
+
+  const _RoutesList({required this.routes, required this.onDelete});
+
+  @override
+  Widget build(BuildContext context) {
+    if (routes.isEmpty) {
+      return const Center(
+          child: Text('Henüz rota oluşturmadınız',
+              style: TextStyle(color: Colors.white70)));
+    }
+
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: routes.length,
+      itemBuilder: (context, index) {
+        final route = routes[index];
+        return Card(
+          color: AppTheme.lightGrey,
+          margin: const EdgeInsets.only(bottom: 12),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: ListTile(
+            leading: const Icon(Icons.map, color: AppTheme.primaryOrange),
+            title: Text(route['name'] ?? 'İsimsiz Rota',
+                style: const TextStyle(fontWeight: FontWeight.bold)),
+            subtitle: Text('${(route['waypoints'] as List).length} durak'),
+            trailing: IconButton(
+              icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Rotayı Sil'),
+                    content: const Text(
+                        'Bu rotayı silmek istediğinize emin misiniz?'),
+                    actions: [
+                      TextButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text('İptal')),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          onDelete(route['id'] ?? route['_id']);
+                        },
+                        child: const Text('Sil',
+                            style: TextStyle(color: Colors.red)),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      },
     );
   }
 }

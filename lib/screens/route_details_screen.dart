@@ -3,6 +3,9 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import '../models/route.dart';
 import '../theme/app_theme.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
+import '../services/api_service.dart';
 
 class RouteDetailsScreen extends StatelessWidget {
   final RidersRoute route;
@@ -22,6 +25,54 @@ class RouteDetailsScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(route.name),
         actions: [
+          // Delete option if owner
+          Builder(builder: (context) {
+            final currentUserId = context.read<AuthProvider>().currentUser?.id;
+            if (currentUserId == route.user.id) {
+              return IconButton(
+                icon: const Icon(Icons.delete, color: Colors.red),
+                onPressed: () async {
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('Rotayı Sil'),
+                      content: const Text(
+                          'Bu rotayı silmek istediğinize emin misiniz?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: const Text('İptal'),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, true),
+                          style:
+                              TextButton.styleFrom(foregroundColor: Colors.red),
+                          child: const Text('Sil'),
+                        ),
+                      ],
+                    ),
+                  );
+
+                  if (confirm == true && context.mounted) {
+                    try {
+                      await context.read<ApiService>().deleteRoute(route.id);
+                      if (context.mounted) {
+                        Navigator.pop(
+                            context, true); // Return true to indicate deleted
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Hata: $e')),
+                        );
+                      }
+                    }
+                  }
+                },
+              );
+            }
+            return const SizedBox.shrink();
+          }),
           IconButton(
             icon: const Icon(Icons.share),
             onPressed: () {
