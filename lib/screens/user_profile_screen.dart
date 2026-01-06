@@ -23,8 +23,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   bool _isLoading = true;
   String? _error;
   bool _isFollowing = false;
+  int _postCount = 0;
+  int _routeCount = 0;
 
-  String _getProfilePictureUrl(String? path) => ApiService().buildStaticUrl(path ?? '');
+  String _getProfilePictureUrl(String? path) =>
+      ApiService().buildStaticUrl(path ?? '');
 
   @override
   void initState() {
@@ -39,6 +42,19 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         _user = user;
         _isLoading = false;
       });
+      final posts = await _apiService.getPosts();
+      final userPosts =
+          posts.where((p) => (p as dynamic).userId == widget.userId).toList();
+
+      final routes = await _apiService.getUserRoutes(widget.userId);
+
+      if (mounted) {
+        setState(() {
+          _postCount = userPosts.length;
+          _routeCount = (routes as List).length;
+        });
+      }
+
       // After user is loaded, check follow status (must run after _user is set)
       await _checkFollowStatus();
     } catch (e) {
@@ -73,7 +89,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     try {
       if (_isFollowing) {
         await _apiService.unfollowUser(_user!.id);
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('${_user!.username} takibi bırakıldı'),
@@ -82,7 +98,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         );
       } else {
         await _apiService.followUser(_user!.id);
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('${_user!.username} takip ediliyor'),
@@ -97,7 +113,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       setState(() {
         _error = e.toString();
       });
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Hata: ${e.toString()}'),
@@ -121,7 +137,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       });
 
       final chat = await _apiService.getOrCreateChat(_user!.id);
-      
+
       if (mounted) {
         Navigator.push(
           context,
@@ -256,9 +272,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildStatColumn('Posts', '0'),
-                _buildStatColumn('Followers', _user!.followers.length.toString()),
-                _buildStatColumn('Following', _user!.following.length.toString()),
+                _buildStatColumn('Posts', '$_postCount'),
+                _buildStatColumn('Followers', '${_user!.followers.length}'),
+                _buildStatColumn('Rides', '$_routeCount'),
               ],
             ),
             const SizedBox(height: 24),
@@ -302,7 +318,4 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       ],
     );
   }
-} 
-
-
-
+}

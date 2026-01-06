@@ -20,6 +20,7 @@ import 'screens/app_settings_screen.dart';
 import 'screens/explore_screen_new.dart';
 import 'providers/map_pin_provider.dart';
 import 'services/socket_service.dart';
+import 'services/webrtc_service.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -75,7 +76,8 @@ class _MyAppState extends State<MyApp> {
             return socket;
           },
         ),
-        ChangeNotifierProxyProvider3<ApiService, SocketService, AuthProvider, MapPinProvider>(
+        ChangeNotifierProxyProvider3<ApiService, SocketService, AuthProvider,
+            MapPinProvider>(
           create: (context) => MapPinProvider(
             apiService: context.read<ApiService>(),
             socketService: context.read<SocketService>(),
@@ -93,6 +95,9 @@ class _MyAppState extends State<MyApp> {
             );
             return provider;
           },
+        ),
+        ProxyProvider<SocketService, WebRTCService>(
+          update: (context, socket, prev) => prev ?? WebRTCService(socket),
         ),
       ],
       child: MaterialApp(

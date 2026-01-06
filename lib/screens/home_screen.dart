@@ -4,6 +4,7 @@ import '../providers/auth_provider.dart';
 import '../models/post.dart';
 import '../services/api_service.dart';
 import '../widgets/post_card.dart';
+import '../widgets/stories_list.dart'; // Import StoriesList
 import 'notifications_screen.dart';
 import 'chat_list_screen.dart';
 import 'comments_screen.dart';
@@ -16,7 +17,8 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
   List<Post> _posts = [];
   List<Post> _followingPosts = [];
   List<Post> _explorePosts = [];
@@ -56,7 +58,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   void _onScroll() {
-    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
       _loadPosts();
     }
   }
@@ -79,13 +82,14 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
     try {
       final posts = await _apiService.getPosts();
-      final following = context.read<AuthProvider>().currentUser?.following ?? [];
-      
+      final following =
+          context.read<AuthProvider>().currentUser?.following ?? [];
+
       // Filter posts ONLY from followed users (excluding current user)
       final filteredPosts = posts.where((post) {
         return following.contains(post.user?.id);
       }).toList();
-      
+
       if (mounted) {
         setState(() {
           _followingPosts = filteredPosts;
@@ -117,20 +121,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     });
 
     try {
-      final posts = await _apiService.getPosts();
-      final currentUserId = context.read<AuthProvider>().currentUser?.id;
-      final following = context.read<AuthProvider>().currentUser?.following ?? [];
-      
-      // Show posts from users you DON'T follow (excluding current user)
-      final filteredPosts = posts.where((post) {
-        return post.user?.id != currentUserId && 
-               !following.contains(post.user?.id);
-      }).toList();
-      
+      final posts = await _apiService.getExplorePosts();
+
       if (mounted) {
         setState(() {
-          _explorePosts = filteredPosts;
-          _posts = filteredPosts;
+          _explorePosts = posts.cast<Post>();
+          _posts = _explorePosts;
         });
       }
     } catch (e) {
@@ -158,7 +154,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       }
       _loadPosts(); // Refresh posts after like/unlike
     } catch (e) {
-      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error: ${e.toString()}'),
@@ -180,7 +175,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+                MaterialPageRoute(
+                    builder: (context) => const NotificationsScreen()),
               );
             },
           ),
@@ -203,23 +199,31 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
+      body: Column(
         children: [
-          // Following Tab
-          RefreshIndicator(
-            onRefresh: _loadFollowingPosts,
-            child: _buildPostsList(
-              emptyMessage: _currentTab == 0
-                  ? 'Henüz takip ettiğiniz kişilerden gönderi yok.\nYeni kişileri takip edin!'
-                  : 'Henüz gönderi yok',
-            ),
-          ),
-          // Explore Tab
-          RefreshIndicator(
-            onRefresh: _loadExplorePosts,
-            child: _buildPostsList(
-              emptyMessage: 'Henüz keşfedilecek gönderi yok.\nİlk paylaşımı siz yapın!',
+          const StoriesList(), // Add StoriesList here
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                // Following Tab
+                RefreshIndicator(
+                  onRefresh: _loadFollowingPosts,
+                  child: _buildPostsList(
+                    emptyMessage: _currentTab == 0
+                        ? 'Henüz takip ettiğiniz kişilerden gönderi yok.\nYeni kişileri takip edin!'
+                        : 'Henüz gönderi yok',
+                  ),
+                ),
+                // Explore Tab
+                RefreshIndicator(
+                  onRefresh: _loadExplorePosts,
+                  child: _buildPostsList(
+                    emptyMessage:
+                        'Henüz keşfedilecek gönderi yok.\nİlk paylaşımı siz yapın!',
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -238,7 +242,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     Icon(
                       Icons.error_outline,
                       size: 64,
-                      color: Theme.of(context).colorScheme.error.withOpacity(0.5),
+                      color:
+                          Theme.of(context).colorScheme.error.withOpacity(0.5),
                     ),
                     const SizedBox(height: 16),
                     Text(
@@ -263,7 +268,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          _currentTab == 0 ? Icons.people_outline : Icons.explore_outlined,
+                          _currentTab == 0
+                              ? Icons.people_outline
+                              : Icons.explore_outlined,
                           size: 64,
                           color: Colors.white.withOpacity(0.3),
                         ),
@@ -294,8 +301,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       }
 
                       final post = _posts[index];
-                      final isLiked = post.likes.contains(context.read<AuthProvider>().currentUser?.id);
-                      
+                      final isLiked = post.likes.contains(
+                          context.read<AuthProvider>().currentUser?.id);
+
                       return PostCard(
                         id: post.id,
                         description: post.description ?? '',
@@ -320,12 +328,14 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           // Share functionality
                         },
                         onProfileTap: post.user?.id != null &&
-                                post.user!.id != context.read<AuthProvider>().currentUser?.id
+                                post.user!.id !=
+                                    context.read<AuthProvider>().currentUser?.id
                             ? () {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (ctx) => UserProfileScreen(userId: post.user!.id),
+                                    builder: (ctx) => UserProfileScreen(
+                                        userId: post.user!.id),
                                   ),
                                 );
                               }
@@ -334,4 +344,4 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     },
                   );
   }
-} 
+}

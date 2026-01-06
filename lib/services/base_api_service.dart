@@ -2,30 +2,61 @@ import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/foundation.dart';
 
-/// Base API Service - Common HTTP client setup
-/// 
-/// SRP: Sadece HTTP client konfigürasyonu ve token yönetiminden sorumlu
+/// Base API Service
+///
+/// Render 'Cold Start' ve güvenli bağlantı yönetimi için optimize edilmiştir.
 abstract class BaseApiService {
-  final Dio dio;
+  late final Dio dio;
   final FlutterSecureStorage storage = const FlutterSecureStorage();
-  final String baseUrl = 'http://localhost:5000/api';
 
-  BaseApiService() : dio = Dio() {
+  static const String localBaseUrl = 'http://localhost:5000/api';
+  static const String prodBaseUrl =
+      'https://riders-app-backend.onrender.com/api';
+
+  // Canlı backend'e geçiş yaptık
+  final String baseUrl = prodBaseUrl;
+
+  BaseApiService() {
+    dio = Dio(BaseOptions(
+      baseUrl: baseUrl,
+      connectTimeout:
+          const Duration(seconds: 30), // Cold start için uzun timeout
+      receiveTimeout: const Duration(seconds: 30),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    ));
+
     dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
         final token = await storage.read(key: 'token');
         if (token != null) {
           options.headers['Authorization'] = 'Bearer $token';
         }
+        log('API Request: ${options.method} ${options.path}');
         return handler.next(options);
       },
       onResponse: (response, handler) {
+        log('API Response: ${response.statusCode}');
         return handler.next(response);
       },
       onError: (error, handler) async {
-        if (error.response?.statusCode == 401 || 
+        log('API Error: ${error.type} - ${error.message}');
+
+        // Cold Start veya geçici bağlantı sorunları için basit bir retry mekanizması
+        if (_shouldRetry(error)) {
+          try {
+            log('Retry: Bağlantı sorunu, tekrar deneniyor...');
+            final response = await _retry(error.requestOptions);
+            return handler.resolve(response);
+          } catch (e) {
+            return handler.next(error);
+          }
+        }
+
+        if (error.response?.statusCode == 401 ||
             error.response?.statusCode == 403) {
-          log('Token error: ${error.response?.data}');
           await storage.delete(key: 'token');
         }
         return handler.next(error);
@@ -33,26 +64,47 @@ abstract class BaseApiService {
     ));
   }
 
+  bool _shouldRetry(DioException error) {
+    return error.type == DioExceptionType.connectionTimeout ||
+        error.type == DioExceptionType.sendTimeout ||
+        error.type == DioExceptionType.receiveTimeout ||
+        (error.response?.statusCode != null &&
+            error.response!.statusCode! >= 500);
+  }
+
+  Future<Response> _retry(RequestOptions requestOptions) {
+    final options = Options(
+      method: requestOptions.method,
+      headers: requestOptions.headers,
+    );
+    return dio.request(
+      requestOptions.path,
+      data: requestOptions.data,
+      queryParameters: requestOptions.queryParameters,
+      options: options,
+    );
+  }
+
   void log(String message) {
     if (kDebugMode) {
-      debugPrint(message);
+      debugPrint('[ApiService] $message');
     }
   }
 
   String staticBaseUrl() => baseUrl.replaceAll('/api', '');
 
   String buildStaticUrl(String path) {
+    if (path.isEmpty) return '';
     final normalized = path.replaceAll('\\', '/');
-    final withPrefix = normalized.startsWith('uploads/') 
-        ? normalized 
-        : 'uploads/$normalized';
+    final withPrefix =
+        normalized.startsWith('uploads/') ? normalized : 'uploads/$normalized';
     return '${staticBaseUrl()}/$withPrefix';
   }
 
   Future<String> getToken() async {
     final token = await storage.read(key: 'token');
     if (token == null) {
-      throw Exception('No authentication token found');
+      throw Exception('Yetkilendirme hatası: Token bulunamadı');
     }
     return token;
   }

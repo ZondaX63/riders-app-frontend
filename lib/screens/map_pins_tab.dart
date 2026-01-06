@@ -13,7 +13,8 @@ class MapPinsTab extends StatefulWidget {
   State<MapPinsTab> createState() => _MapPinsTabState();
 }
 
-class _MapPinsTabState extends State<MapPinsTab> with AutomaticKeepAliveClientMixin {
+class _MapPinsTabState extends State<MapPinsTab>
+    with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
 
@@ -74,7 +75,7 @@ class _MapPinsTabState extends State<MapPinsTab> with AutomaticKeepAliveClientMi
 
   Future<void> _showAddPinDialog() async {
     final center = _mapReady ? _mapController.camera.center : _currentCenter;
-    
+
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -188,7 +189,7 @@ class _MapPinsTabState extends State<MapPinsTab> with AutomaticKeepAliveClientMi
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    
+
     return Consumer<MapPinProvider>(
       builder: (context, provider, _) {
         final nearbyPins = provider.nearbyPins;
@@ -200,7 +201,8 @@ class _MapPinsTabState extends State<MapPinsTab> with AutomaticKeepAliveClientMi
             SizedBox(
               height: 56,
               child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 scrollDirection: Axis.horizontal,
                 children: _typeLabels.entries.map((entry) {
                   final selected = _selectedTypes.contains(entry.key);
@@ -258,7 +260,8 @@ class _MapPinsTabState extends State<MapPinsTab> with AutomaticKeepAliveClientMi
                     ),
                     children: [
                       TileLayer(
-                        urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        urlTemplate:
+                            'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                         userAgentPackageName: 'com.riders.social',
                       ),
                       MarkerLayer(
@@ -290,7 +293,8 @@ class _MapPinsTabState extends State<MapPinsTab> with AutomaticKeepAliveClientMi
                         FloatingActionButton.small(
                           heroTag: 'add-pin',
                           onPressed: () => _showAddPinDialog(),
-                          backgroundColor: Theme.of(context).colorScheme.primary,
+                          backgroundColor:
+                              Theme.of(context).colorScheme.primary,
                           child: const Icon(Icons.add_location_alt),
                         ),
                         const SizedBox(height: 8),
@@ -301,7 +305,8 @@ class _MapPinsTabState extends State<MapPinsTab> with AutomaticKeepAliveClientMi
                               ? const SizedBox(
                                   width: 18,
                                   height: 18,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2),
                                 )
                               : const Icon(Icons.my_location),
                         ),
@@ -323,7 +328,8 @@ class _MapPinsTabState extends State<MapPinsTab> with AutomaticKeepAliveClientMi
                         color: Colors.redAccent.withOpacity(0.2),
                         child: Padding(
                           padding: const EdgeInsets.all(12),
-                          child: Text(error, style: const TextStyle(color: Colors.white)),
+                          child: Text(error,
+                              style: const TextStyle(color: Colors.white)),
                         ),
                       ),
                     ),
@@ -339,7 +345,8 @@ class _MapPinsTabState extends State<MapPinsTab> with AutomaticKeepAliveClientMi
                       ),
                     )
                   : ListView.separated(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
                       scrollDirection: Axis.horizontal,
                       itemBuilder: (context, index) {
                         final pin = nearbyPins[index];
@@ -348,7 +355,8 @@ class _MapPinsTabState extends State<MapPinsTab> with AutomaticKeepAliveClientMi
                           decoration: BoxDecoration(
                             color: Theme.of(context).colorScheme.surface,
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: _pinColor(pin.type).withOpacity(0.4)),
+                            border: Border.all(
+                                color: _pinColor(pin.type).withOpacity(0.4)),
                           ),
                           padding: const EdgeInsets.all(12),
                           child: Column(
@@ -356,12 +364,15 @@ class _MapPinsTabState extends State<MapPinsTab> with AutomaticKeepAliveClientMi
                             children: [
                               Row(
                                 children: [
-                                  Icon(_pinIcon(pin.type), color: _pinColor(pin.type), size: 20),
+                                  Icon(_pinIcon(pin.type),
+                                      color: _pinColor(pin.type), size: 20),
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
                                       pin.title,
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
@@ -369,7 +380,8 @@ class _MapPinsTabState extends State<MapPinsTab> with AutomaticKeepAliveClientMi
                                 ],
                               ),
                               const SizedBox(height: 8),
-                              if (pin.description != null && pin.description!.isNotEmpty)
+                              if (pin.description != null &&
+                                  pin.description!.isNotEmpty)
                                 Text(
                                   pin.description!,
                                   maxLines: 2,
@@ -413,7 +425,7 @@ class _AddPinFormState extends State<_AddPinForm> {
   String _selectedType = 'custom';
   bool _isPublic = true;
   bool _isSubmitting = false;
-  
+
   static const Map<String, String> _typeLabels = {
     'meetup': 'Meetup Point',
     'hazard': 'Hazard Warning',
@@ -504,10 +516,10 @@ class _AddPinFormState extends State<_AddPinForm> {
                 ],
               ),
               const SizedBox(height: 16),
-              
+
               // Pin Type
               DropdownButtonFormField<String>(
-                value: _selectedType,
+                initialValue: _selectedType,
                 decoration: const InputDecoration(
                   labelText: 'Pin Tipi',
                   border: OutlineInputBorder(),
@@ -525,7 +537,7 @@ class _AddPinFormState extends State<_AddPinForm> {
                 },
               ),
               const SizedBox(height: 16),
-              
+
               // Title
               TextFormField(
                 controller: _titleController,
@@ -542,7 +554,7 @@ class _AddPinFormState extends State<_AddPinForm> {
                 },
               ),
               const SizedBox(height: 16),
-              
+
               // Description
               TextFormField(
                 controller: _descriptionController,
@@ -554,7 +566,7 @@ class _AddPinFormState extends State<_AddPinForm> {
                 maxLines: 3,
               ),
               const SizedBox(height: 16),
-              
+
               // Location Info
               Container(
                 padding: const EdgeInsets.all(12),
@@ -582,7 +594,7 @@ class _AddPinFormState extends State<_AddPinForm> {
                 ),
               ),
               const SizedBox(height: 16),
-              
+
               // Public Toggle
               SwitchListTile(
                 title: const Text('Herkese Açık'),
@@ -592,7 +604,7 @@ class _AddPinFormState extends State<_AddPinForm> {
                 contentPadding: EdgeInsets.zero,
               ),
               const SizedBox(height: 24),
-              
+
               // Submit Button
               ElevatedButton(
                 onPressed: _isSubmitting ? null : _submitPin,

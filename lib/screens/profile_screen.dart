@@ -19,7 +19,7 @@ class _ModernProfileScreenState extends State<ModernProfileScreen> {
   final ApiService _apiService = ApiService();
   bool _isLoading = false;
   String? _error;
-  int _postCount = 0;
+  int _routeCount = 0;
   List<Post> _userPosts = [];
   int _selectedTab = 0; // 0: Past Rides, 1: Achievements
 
@@ -41,14 +41,18 @@ class _ModernProfileScreenState extends State<ModernProfileScreen> {
         _isLoading = true;
         _error = null;
       });
-      final current = Provider.of<AuthProvider>(context, listen: false).currentUser;
+      final current =
+          Provider.of<AuthProvider>(context, listen: false).currentUser;
       if (current == null) return;
       final feed = await _apiService.getPosts();
       final userPosts = feed.where((p) => p.userId == current.id).toList();
+
+      final routes = await _apiService.getUserRoutes(current.id);
+
       if (!mounted) return;
       setState(() {
         _userPosts = userPosts;
-        _postCount = userPosts.length;
+        _routeCount = (routes as List).length;
       });
     } catch (e) {
       setState(() => _error = e.toString());
@@ -59,19 +63,26 @@ class _ModernProfileScreenState extends State<ModernProfileScreen> {
 
   Future<void> _updateProfileImage() async {
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery, maxWidth: 800, maxHeight: 800, imageQuality: 85);
+    final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 85);
     if (pickedFile == null) return;
     setState(() => _isLoading = true);
     try {
-      await Provider.of<AuthProvider>(context, listen: false).updateProfilePicture(pickedFile.path);
+      await Provider.of<AuthProvider>(context, listen: false)
+          .updateProfilePicture(pickedFile.path);
       if (!mounted) return;
-      
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profil resmi güncellendi')));
+
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profil resmi güncellendi')));
       await _loadUserData();
     } catch (e) {
       if (!mounted) return;
-      
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Hata: $e')));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -116,8 +127,12 @@ class _ModernProfileScreenState extends State<ModernProfileScreen> {
                             CircleAvatar(
                               radius: 36,
                               backgroundColor: AppTheme.lightGrey,
-                              backgroundImage: avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
-                              child: avatarUrl.isEmpty ? const Icon(Icons.person, size: 36) : null,
+                              backgroundImage: avatarUrl.isNotEmpty
+                                  ? NetworkImage(avatarUrl)
+                                  : null,
+                              child: avatarUrl.isEmpty
+                                  ? const Icon(Icons.person, size: 36)
+                                  : null,
                             ),
                             Positioned(
                               bottom: 0,
@@ -127,7 +142,8 @@ class _ModernProfileScreenState extends State<ModernProfileScreen> {
                                 child: const CircleAvatar(
                                   radius: 14,
                                   backgroundColor: AppTheme.primaryOrange,
-                                  child: Icon(Icons.camera_alt, size: 14, color: Colors.white),
+                                  child: Icon(Icons.camera_alt,
+                                      size: 14, color: Colors.white),
                                 ),
                               ),
                             ),
@@ -137,8 +153,18 @@ class _ModernProfileScreenState extends State<ModernProfileScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(user.fullName ?? user.username, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                                Text(user.bio?.isNotEmpty == true ? user.bio! : '', style: const TextStyle(color: Colors.white70), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                Text(user.fullName ?? user.username,
+                                    style: const TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold)),
+                                Text(
+                                    user.bio?.isNotEmpty == true
+                                        ? user.bio!
+                                        : '',
+                                    style:
+                                        const TextStyle(color: Colors.white70),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis),
                               ],
                             ),
                           ),
@@ -159,7 +185,8 @@ class _ModernProfileScreenState extends State<ModernProfileScreen> {
                           if (result == true && mounted) {
                             // Status updated successfully
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Durum güncellendi')),
+                              const SnackBar(
+                                  content: Text('Durum güncellendi')),
                             );
                           }
                         },
@@ -178,7 +205,8 @@ class _ModernProfileScreenState extends State<ModernProfileScreen> {
                               Container(
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: AppTheme.primaryOrange.withOpacity(0.2),
+                                  color:
+                                      AppTheme.primaryOrange.withOpacity(0.2),
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(
@@ -231,9 +259,14 @@ class _ModernProfileScreenState extends State<ModernProfileScreen> {
                           Expanded(
                             child: TextButton(
                               onPressed: () {
-                                Navigator.of(context).push(MaterialPageRoute(builder: (_) => const EditProfileScreen()));
+                                Navigator.of(context).push(MaterialPageRoute(
+                                    builder: (_) => const EditProfileScreen()));
                               },
-                              style: TextButton.styleFrom(backgroundColor: AppTheme.lightGrey, shape: const StadiumBorder(), padding: const EdgeInsets.symmetric(vertical: 12)),
+                              style: TextButton.styleFrom(
+                                  backgroundColor: AppTheme.lightGrey,
+                                  shape: const StadiumBorder(),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 12)),
                               child: const Text('Profili Düzenle'),
                             ),
                           ),
@@ -245,9 +278,11 @@ class _ModernProfileScreenState extends State<ModernProfileScreen> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Row(children: [
-                        _StatCard(value: '$_postCount', label: 'Rides'),
+                        _StatCard(value: '$_routeCount', label: 'Rides'),
                         const SizedBox(width: 8),
-                        _StatCard(value: '${user.followers.length}', label: 'Followers'),
+                        _StatCard(
+                            value: '${user.followers.length}',
+                            label: 'Followers'),
                         const SizedBox(width: 8),
                         const _StatCard(value: '0', label: 'Distance'),
                       ]),
@@ -257,9 +292,13 @@ class _ModernProfileScreenState extends State<ModernProfileScreen> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: _MotorcycleCard(
-                        title: '${user.motorcycleInfo?['brand'] ?? 'Motorcycle'} ${user.motorcycleInfo?['model'] ?? ''}'.trim(),
+                        title:
+                            '${user.motorcycleInfo?['brand'] ?? 'Motorcycle'} ${user.motorcycleInfo?['model'] ?? ''}'
+                                .trim(),
                         year: user.motorcycleInfo?['year']?.toString(),
-                        description: user.bio?.isNotEmpty == true ? user.bio! : 'Sürüşlerim için kullandığım motosiklet.',
+                        description: user.bio?.isNotEmpty == true
+                            ? user.bio!
+                            : 'Sürüşlerim için kullandığım motosiklet.',
                         motorcyclePhoto: user.motorcycleInfo?['photo'],
                       ),
                     ),
@@ -267,20 +306,32 @@ class _ModernProfileScreenState extends State<ModernProfileScreen> {
                     // Tabs
                     Container(
                       padding: const EdgeInsets.only(top: 8),
-                      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Colors.white.withValues(alpha: 0.1)))),
+                      decoration: BoxDecoration(
+                          border: Border(
+                              bottom: BorderSide(
+                                  color: Colors.white.withValues(alpha: 0.1)))),
                       child: Row(children: [
-                        _TabButton(text: 'Past Rides', selected: _selectedTab == 0, onTap: () => setState(() => _selectedTab = 0)),
-                        _TabButton(text: 'Achievements', selected: _selectedTab == 1, onTap: () => setState(() => _selectedTab = 1)),
+                        _TabButton(
+                            text: 'Past Rides',
+                            selected: _selectedTab == 0,
+                            onTap: () => setState(() => _selectedTab = 0)),
+                        _TabButton(
+                            text: 'Achievements',
+                            selected: _selectedTab == 1,
+                            onTap: () => setState(() => _selectedTab = 1)),
                       ]),
                     ),
                     Padding(
                       padding: const EdgeInsets.all(16.0),
-                      child: _selectedTab == 0 ? _RidesGrid(posts: _userPosts) : const _AchievementsPlaceholder(),
+                      child: _selectedTab == 0
+                          ? _RidesGrid(posts: _userPosts)
+                          : const _AchievementsPlaceholder(),
                     ),
                     if (_error != null)
                       Padding(
                         padding: const EdgeInsets.all(16.0),
-                        child: Text(_error!, style: const TextStyle(color: Colors.redAccent)),
+                        child: Text(_error!,
+                            style: const TextStyle(color: Colors.redAccent)),
                       ),
                   ],
                 ),
@@ -308,7 +359,9 @@ class _StatCard extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            Text(value,
+                style:
+                    const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
             const SizedBox(height: 2),
             Text(label, style: const TextStyle(color: Colors.white70)),
           ],
@@ -323,7 +376,7 @@ class _MotorcycleCard extends StatelessWidget {
   final String? year;
   final String description;
   final String? motorcyclePhoto;
-  
+
   const _MotorcycleCard({
     required this.title,
     this.year,
@@ -344,7 +397,8 @@ class _MotorcycleCard extends StatelessWidget {
         children: [
           if (motorcyclePhoto != null && motorcyclePhoto!.isNotEmpty)
             ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(16)),
               child: AspectRatio(
                 aspectRatio: 16 / 9,
                 child: Image.network(
@@ -354,7 +408,8 @@ class _MotorcycleCard extends StatelessWidget {
                     return Container(
                       color: AppTheme.darkGrey,
                       child: const Center(
-                        child: Icon(Icons.two_wheeler, size: 64, color: Colors.white24),
+                        child: Icon(Icons.two_wheeler,
+                            size: 64, color: Colors.white24),
                       ),
                     );
                   },
@@ -363,9 +418,9 @@ class _MotorcycleCard extends StatelessWidget {
             )
           else
             Container(
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: AppTheme.darkGrey,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
               ),
               child: AspectRatio(
                 aspectRatio: 16 / 9,
@@ -373,11 +428,13 @@ class _MotorcycleCard extends StatelessWidget {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.two_wheeler, size: 64, color: Colors.white.withOpacity(0.3)),
+                      Icon(Icons.two_wheeler,
+                          size: 64, color: Colors.white.withOpacity(0.3)),
                       const SizedBox(height: 8),
                       Text(
                         'Motor fotoğrafı eklenmemiş',
-                        style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+                        style: TextStyle(
+                            color: Colors.white.withOpacity(0.5), fontSize: 12),
                       ),
                     ],
                   ),
@@ -389,24 +446,40 @@ class _MotorcycleCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text(title,
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      if (year != null && year!.isNotEmpty) Text(year!, style: const TextStyle(color: Colors.white70)),
-                      Text(description, style: const TextStyle(color: Colors.white70)),
-                    ]),
+                    Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (year != null && year!.isNotEmpty)
+                            Text(year!,
+                                style: const TextStyle(color: Colors.white70)),
+                          Text(description,
+                              style: const TextStyle(color: Colors.white70)),
+                        ]),
                     TextButton(
-                      style: TextButton.styleFrom(backgroundColor: AppTheme.primaryOrange, foregroundColor: Colors.black, shape: const StadiumBorder(), padding: const EdgeInsets.symmetric(horizontal: 16)),
+                      style: TextButton.styleFrom(
+                          backgroundColor: AppTheme.primaryOrange,
+                          foregroundColor: Colors.black,
+                          shape: const StadiumBorder(),
+                          padding: const EdgeInsets.symmetric(horizontal: 16)),
                       onPressed: () {
                         showDialog(
                           context: context,
                           builder: (ctx) => AlertDialog(
                             title: const Text('Teknik Bilgiler'),
-                            content: const Text('Özellikler yakında eklenecek.'),
-                            actions: [TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Kapat'))],
+                            content:
+                                const Text('Özellikler yakında eklenecek.'),
+                            actions: [
+                              TextButton(
+                                  onPressed: () => Navigator.of(ctx).pop(),
+                                  child: const Text('Kapat'))
+                            ],
                           ),
                         );
                       },
@@ -427,7 +500,8 @@ class _TabButton extends StatelessWidget {
   final String text;
   final bool selected;
   final VoidCallback onTap;
-  const _TabButton({required this.text, required this.selected, required this.onTap});
+  const _TabButton(
+      {required this.text, required this.selected, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -439,8 +513,10 @@ class _TabButton extends StatelessWidget {
         child: Container(
           alignment: Alignment.center,
           padding: const EdgeInsets.only(bottom: 10, top: 14),
-          decoration: BoxDecoration(border: Border(bottom: BorderSide(color: color, width: 3))),
-          child: Text(text, style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
+          decoration: BoxDecoration(
+              border: Border(bottom: BorderSide(color: color, width: 3))),
+          child: Text(text,
+              style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
         ),
       ),
     );
@@ -454,7 +530,9 @@ class _RidesGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (posts.isEmpty) {
-      return const Center(child: Text('Henüz paylaşım yok', style: TextStyle(color: Colors.white70)));
+      return const Center(
+          child: Text('Henüz paylaşım yok',
+              style: TextStyle(color: Colors.white70)));
     }
 
     return GridView.builder(
@@ -481,16 +559,26 @@ class _RidesGrid extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                   child: image != null
                       ? Image.network(image, fit: BoxFit.cover)
-                      : Container(color: AppTheme.lightGrey, child: const Icon(Icons.image, color: Colors.white54)),
+                      : Container(
+                          color: AppTheme.lightGrey,
+                          child:
+                              const Icon(Icons.image, color: Colors.white54)),
                 ),
               ),
               const SizedBox(height: 6),
               Expanded(
-                child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold)),
+                child: Text(title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
               ),
               const SizedBox(height: 2),
               Expanded(
-                child: Text(post.createdAt.toLocal().toIso8601String().substring(0, 10), style: const TextStyle(color: Colors.white70, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+                child: Text(
+                    post.createdAt.toLocal().toIso8601String().substring(0, 10),
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
               ),
             ],
           ),
@@ -507,11 +595,12 @@ class _AchievementsPlaceholder extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: AppTheme.lightGrey, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white.withValues(alpha: 0.06))),
-      child: const Text('Başarımlar yakında', style: TextStyle(color: Colors.white70)),
+      decoration: BoxDecoration(
+          color: AppTheme.lightGrey,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.06))),
+      child: const Text('Başarımlar yakında',
+          style: TextStyle(color: Colors.white70)),
     );
   }
 }
-
-
-

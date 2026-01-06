@@ -15,11 +15,47 @@ class SocketService extends ChangeNotifier {
   String? _currentUserId;
   bool _mapPinsSubscribed = false;
 
-  final _mapPinCreatedController = StreamController<Map<String, dynamic>>.broadcast();
-  final _mapPinDeletedController = StreamController<Map<String, dynamic>>.broadcast();
+  final _mapPinCreatedController =
+      StreamController<Map<String, dynamic>>.broadcast();
+  final _mapPinDeletedController =
+      StreamController<Map<String, dynamic>>.broadcast();
 
-  Stream<Map<String, dynamic>> get mapPinCreatedStream => _mapPinCreatedController.stream;
-  Stream<Map<String, dynamic>> get mapPinDeletedStream => _mapPinDeletedController.stream;
+  Stream<Map<String, dynamic>> get mapPinCreatedStream =>
+      _mapPinCreatedController.stream;
+  Stream<Map<String, dynamic>> get mapPinDeletedStream =>
+      _mapPinDeletedController.stream;
+
+  final _locationSharedController =
+      StreamController<Map<String, dynamic>>.broadcast();
+  Stream<Map<String, dynamic>> get locationSharedStream =>
+      _locationSharedController.stream;
+
+  // WebRTC STreams
+  final _voiceUserJoinedController =
+      StreamController<Map<String, dynamic>>.broadcast();
+  final _voiceUserLeftController =
+      StreamController<Map<String, dynamic>>.broadcast();
+  final _voiceOfferController =
+      StreamController<Map<String, dynamic>>.broadcast();
+  final _voiceAnswerController =
+      StreamController<Map<String, dynamic>>.broadcast();
+  final _voiceCandidateController =
+      StreamController<Map<String, dynamic>>.broadcast();
+  final _voiceExistingUsersController =
+      StreamController<List<dynamic>>.broadcast();
+
+  Stream<Map<String, dynamic>> get voiceUserJoinedStream =>
+      _voiceUserJoinedController.stream;
+  Stream<Map<String, dynamic>> get voiceUserLeftStream =>
+      _voiceUserLeftController.stream;
+  Stream<Map<String, dynamic>> get voiceOfferStream =>
+      _voiceOfferController.stream;
+  Stream<Map<String, dynamic>> get voiceAnswerStream =>
+      _voiceAnswerController.stream;
+  Stream<Map<String, dynamic>> get voiceCandidateStream =>
+      _voiceCandidateController.stream;
+  Stream<List<dynamic>> get voiceExistingUsersStream =>
+      _voiceExistingUsersController.stream;
 
   bool get isConnected => _socket?.connected == true;
   String? get currentUserId => _currentUserId;
@@ -120,7 +156,32 @@ class SocketService extends ChangeNotifier {
         } else if (data is Map) {
           _mapPinDeletedController.add(Map<String, dynamic>.from(data));
         }
-      });
+      })
+      ..on('locationShared', (data) {
+        if (data is Map<String, dynamic>) {
+          _locationSharedController.add(data);
+        } else if (data is Map) {
+          _locationSharedController.add(Map<String, dynamic>.from(data));
+        }
+      })
+      ..on(
+          'voice:user-joined',
+          (data) =>
+              _voiceUserJoinedController.add(Map<String, dynamic>.from(data)))
+      ..on(
+          'voice:user-left',
+          (data) =>
+              _voiceUserLeftController.add(Map<String, dynamic>.from(data)))
+      ..on('voice:existing-users',
+          (data) => _voiceExistingUsersController.add(data as List<dynamic>))
+      ..on('voice:offer',
+          (data) => _voiceOfferController.add(Map<String, dynamic>.from(data)))
+      ..on('voice:answer',
+          (data) => _voiceAnswerController.add(Map<String, dynamic>.from(data)))
+      ..on(
+          'voice:candidate',
+          (data) =>
+              _voiceCandidateController.add(Map<String, dynamic>.from(data)));
 
     _socket!.connect();
   }
@@ -139,10 +200,57 @@ class SocketService extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Group Location
+  void joinGroup(String groupId) {
+    _socket?.emit('joinGroup', {'groupId': groupId});
+  }
+
+  void leaveGroup(String groupId) {
+    _socket?.emit('leaveGroup', {'groupId': groupId});
+  }
+
+  void shareLocationToGroup(String groupId, Map<String, dynamic> locationData) {
+    if (_socket?.connected == true) {
+      _socket!.emit('shareLocation', {
+        'groupId': groupId,
+        'location': locationData,
+      });
+    }
+  }
+
+  // WebRTC Signaling
+  void joinVoice(String groupId) {
+    _socket?.emit('voice:join', {'groupId': groupId});
+  }
+
+  void leaveVoice(String groupId) {
+    _socket?.emit('voice:leave', {'groupId': groupId});
+  }
+
+  void sendVoiceOffer(String toSocketId, dynamic offer) {
+    _socket?.emit('voice:offer', {'to': toSocketId, 'offer': offer});
+  }
+
+  void sendVoiceAnswer(String toSocketId, dynamic answer) {
+    _socket?.emit('voice:answer', {'to': toSocketId, 'answer': answer});
+  }
+
+  void sendVoiceCandidate(String toSocketId, dynamic candidate) {
+    _socket
+        ?.emit('voice:candidate', {'to': toSocketId, 'candidate': candidate});
+  }
+
   @override
   void dispose() {
     _mapPinCreatedController.close();
     _mapPinDeletedController.close();
+    _locationSharedController.close();
+    _voiceUserJoinedController.close();
+    _voiceUserLeftController.close();
+    _voiceOfferController.close();
+    _voiceAnswerController.close();
+    _voiceCandidateController.close();
+    _voiceExistingUsersController.close();
     _disconnect();
     super.dispose();
   }

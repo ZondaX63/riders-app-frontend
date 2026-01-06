@@ -8,7 +8,7 @@ import '../models/post.dart';
 import '../models/comment.dart' as comment_model;
 
 /// Post API Service
-/// 
+///
 /// SRP: Sadece post işlemlerinden sorumlu
 /// - Get Posts
 /// - Create Post
@@ -34,6 +34,31 @@ class PostApiService extends BaseApiService {
     }
   }
 
+  Future<List<Post>> getExplorePosts({int limit = 20, int offset = 0}) async {
+    try {
+      final response = await dio.get(
+        '$baseUrl/posts/explore',
+        queryParameters: {
+          'limit': limit,
+          'offset': offset,
+        },
+      );
+
+      if (!response.data['success']) {
+        throw Exception('Failed to get explore posts');
+      }
+
+      final posts = (response.data['data']['posts'] as List)
+          .map((post) => Post.fromJson(post))
+          .toList();
+
+      return posts;
+    } on DioException catch (e) {
+      log('DioException in getExplorePosts: ${e.message}');
+      throw Exception('Failed to get explore posts');
+    }
+  }
+
   Future<Post> createPost(String? content, List<String> images) async {
     try {
       final token = await getToken();
@@ -46,7 +71,8 @@ class PostApiService extends BaseApiService {
       request.headers['Authorization'] = 'Bearer $token';
 
       if (content != null && content.isNotEmpty) {
-        request.fields['description'] = content;  // Backend 'description' bekliyor
+        request.fields['description'] =
+            content; // Backend 'description' bekliyor
       }
 
       // Web ve mobile için farklı yaklaşımlar
@@ -56,7 +82,7 @@ class PostApiService extends BaseApiService {
           final xFile = XFile(imagePath);
           final bytes = await xFile.readAsBytes();
           final filename = xFile.name.isNotEmpty ? xFile.name : 'image.jpg';
-          
+
           request.files.add(
             http.MultipartFile.fromBytes(
               'images',
@@ -103,13 +129,18 @@ class PostApiService extends BaseApiService {
       // If the server responds that the post is already liked, treat as success (idempotent)
       final status = e.response?.statusCode;
       final data = e.response?.data;
-      if (status == 400 && data != null && data['error'] != null && data['error']['code'] == 'ALREADY_LIKED') {
+      if (status == 400 &&
+          data != null &&
+          data['error'] != null &&
+          data['error']['code'] == 'ALREADY_LIKED') {
         log('Post already liked, ignoring error');
         return;
       }
 
       // Bubble up server message when available
-      if (data != null && data['error'] != null && data['error']['message'] != null) {
+      if (data != null &&
+          data['error'] != null &&
+          data['error']['message'] != null) {
         throw Exception(data['error']['message']);
       }
 
@@ -148,7 +179,9 @@ class PostApiService extends BaseApiService {
       }
 
       final commentsList = response.data['data']['comments'] as List? ?? [];
-      final comments = commentsList.map((comment) => comment_model.Comment.fromJson(comment)).toList();
+      final comments = commentsList
+          .map((comment) => comment_model.Comment.fromJson(comment))
+          .toList();
       return comments;
     } on DioException catch (e) {
       log('DioException in getComments: ${e.message}');

@@ -49,5 +49,9 @@
 	<string>Your location helps find nearby rider pins.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Your location helps find nearby rider pins.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Used for voice chat in group rides.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Used for video calls and profile pictures.</string>
 </dict>
 </plist>

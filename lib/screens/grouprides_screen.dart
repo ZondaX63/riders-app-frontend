@@ -1,158 +1,237 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
+import '../services/api_service.dart';
+import '../models/route.dart';
+import '../models/group_chat.dart';
+import '../widgets/route_card.dart';
+import '../widgets/async_state_builder.dart';
+import '../screens/create_route_screen.dart';
+import '../screens/route_details_screen.dart';
+import '../screens/group_chat_screen.dart';
 
 class GroupRidesScreen extends StatefulWidget {
-	const GroupRidesScreen({super.key});
+  const GroupRidesScreen({super.key});
 
-	@override
-	State<GroupRidesScreen> createState() => _GroupRidesScreenState();
+  @override
+  State<GroupRidesScreen> createState() => _GroupRidesScreenState();
 }
 
 class _GroupRidesScreenState extends State<GroupRidesScreen> {
-	final List<String> _filters = ['Yakındakiler', 'Bu Hafta', 'Benim Yakınlarım', 'Popüler'];
-	int _selectedFilter = 0;
-
-	@override
-	Widget build(BuildContext context) {
-		return Scaffold(
-			appBar: AppBar(
-				title: const Text('Group Rides'),
-				actions: [
-					IconButton(onPressed: () {}, icon: const Icon(Icons.search))
-				],
-			),
-			body: Column(
-				children: [
-					const SizedBox(height: 12),
-					SingleChildScrollView(
-						scrollDirection: Axis.horizontal,
-						padding: const EdgeInsets.symmetric(horizontal: 16),
-						child: Row(
-							children: List.generate(_filters.length, (i) {
-								final selected = i == _selectedFilter;
-								return Padding(
-									padding: const EdgeInsets.only(right: 8.0),
-									child: ChoiceChip(
-										label: Text(_filters[i]),
-										selected: selected,
-										onSelected: (_) => setState(() => _selectedFilter = i),
-										selectedColor: AppTheme.primaryOrange.withValues(alpha: 0.2),
-										labelStyle: TextStyle(color: selected ? AppTheme.primaryOrange : Colors.white),
-										shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-										backgroundColor: AppTheme.lightGrey,
-									),
-								);
-							}),
-						),
-					),
-					const SizedBox(height: 8),
-					Expanded(
-						child: ListView.separated(
-							padding: const EdgeInsets.all(16),
-							itemCount: 8,
-							separatorBuilder: (_, __) => const SizedBox(height: 12),
-							itemBuilder: (context, index) => _RideCard(index: index),
-						),
-					),
-				],
-			),
-			floatingActionButton: FloatingActionButton.extended(
-				onPressed: () {},
-				icon: const Icon(Icons.add),
-				label: const Text('Create Ride'),
-			),
-		);
-	}
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Grup Sürüşleri'),
+          bottom: const TabBar(
+            indicatorColor: AppTheme.primaryOrange,
+            labelColor: AppTheme.primaryOrange,
+            unselectedLabelColor: Colors.white,
+            tabs: [
+              Tab(text: 'Rotalar'),
+              Tab(text: 'Gruplarım'),
+            ],
+          ),
+          actions: [
+            IconButton(onPressed: () {}, icon: const Icon(Icons.search)),
+          ],
+        ),
+        body: const TabBarView(
+          children: [
+            _RoutesTab(),
+            _GroupsTab(),
+          ],
+        ),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: () async {
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const CreateRouteScreen(),
+              ),
+            );
+            if (result == true) {
+              // Usually we'd want to refresh the routes tab.
+              // Using a simple event bus or provider would be better,
+              // but for now, we'll just let the user pull to refresh.
+            }
+          },
+          icon: const Icon(Icons.add),
+          label: const Text('Rota Paylaş'),
+          backgroundColor: AppTheme.primaryOrange,
+        ),
+      ),
+    );
+  }
 }
 
-class _RideCard extends StatelessWidget {
-	final int index;
-	const _RideCard({required this.index});
+class _RoutesTab extends StatefulWidget {
+  const _RoutesTab();
 
-	@override
-	Widget build(BuildContext context) {
-		return Container(
-			decoration: BoxDecoration(
-				color: AppTheme.lightGrey,
-				borderRadius: BorderRadius.circular(14),
-				border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-			),
-			child: Column(
-				crossAxisAlignment: CrossAxisAlignment.stretch,
-				children: [
-					ClipRRect(
-						borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
-						child: AspectRatio(
-							aspectRatio: 16/9,
-							child: Image.network(
-								'https://lh3.googleusercontent.com/aida-public/AB6AXuARSJCKIgBNIN6uvNSCKcSR00GebqpGYURwdE3pinP4b4L2ReG6PjzLFAOAg-JsBKiKY1YcE1ITh79msY2GcnFh1ayJlwguGcQ7H5XbFFyF_lCgfkeqdjpIkTb9wg_kdi3rOcnFA8gb4rWGcjalY-3mofcZWpg8gejtm-Ix7VLNjICCk9LXe58s4vC2c1mu6rfBUl57hE0961qFFH5FeVkYlA8UPaBtUPuwtGalifVqT1SlbIX4E5yzbIpRYLebupxeqDy4BxT_aVQ',
-								fit: BoxFit.cover,
-							),
-						),
-					),
-					Padding(
-						padding: const EdgeInsets.all(16),
-						child: Column(
-							crossAxisAlignment: CrossAxisAlignment.start,
-							children: [
-								Row(
-									children: [
-										Expanded(
-											child: Column(
-												crossAxisAlignment: CrossAxisAlignment.start,
-												children: [
-													const Text('Coastal Highway Run', style: TextStyle(fontWeight: FontWeight.w700)),
-													const SizedBox(height: 4),
-													Text('San Francisco, CA • 150 miles', style: TextStyle(color: Colors.white.withValues(alpha: 0.75))),
-												],
-											),
-										),
-									const Icon(Icons.people_alt_outlined, color: Colors.white70),
-									const SizedBox(width: 6),
-									const Text('12', style: TextStyle(fontWeight: FontWeight.w600)),
-								],
-							),
-							const SizedBox(height: 10),
-							Row(children: [
-								const Icon(Icons.calendar_today, size: 16, color: Colors.white70),
-								const SizedBox(width: 6),
-								Text('Sun, Oct 27 @ 9:00 AM', style: TextStyle(color: Colors.white.withValues(alpha: 0.75))),
-								const SizedBox(width: 16),
-								const Icon(Icons.place, size: 16, color: Colors.white70),
-								const SizedBox(width: 6),
-								Text('San Francisco, CA', style: TextStyle(color: Colors.white.withValues(alpha: 0.75))),
-							]),
-							const SizedBox(height: 12),
-							Row(children: [
-								Expanded(
-									child: OutlinedButton.icon(
-										onPressed: () {},
-										icon: const Icon(Icons.info_outline),
-										label: const Text('Details'),
-										style: OutlinedButton.styleFrom(
-											side: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
-											foregroundColor: Colors.white,
-											shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-										),
-									),
-								),
-								const SizedBox(width: 10),
-								Expanded(
-									child: ElevatedButton.icon(
-										onPressed: () {},
-										icon: const Icon(Icons.check_circle_outline),
-										label: const Text('Join'),
-									),
-								)
-							])
-						],
-					),
-					),
-				],
-			),
-		);
-	}
+  @override
+  State<_RoutesTab> createState() => _RoutesTabState();
 }
 
+class _RoutesTabState extends State<_RoutesTab> {
+  List<RidersRoute> _routes = [];
+  bool _isLoading = false;
+  String? _error;
 
+  @override
+  void initState() {
+    super.initState();
+    _loadRoutes();
+  }
 
+  Future<void> _loadRoutes() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final routes = await context.read<ApiService>().getPublicRoutes();
+      if (mounted) {
+        setState(() {
+          _routes = routes;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AsyncStateBuilder(
+      isLoading: _isLoading,
+      error: _error,
+      isEmpty: _routes.isEmpty && !_isLoading,
+      emptyMessage: 'Henüz planlanmış sürüş yok',
+      onRetry: _loadRoutes,
+      child: RefreshIndicator(
+        onRefresh: _loadRoutes,
+        child: ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: _routes.length,
+          itemBuilder: (context, index) => RouteCard(
+            route: _routes[index],
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) =>
+                      RouteDetailsScreen(route: _routes[index]),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GroupsTab extends StatefulWidget {
+  const _GroupsTab();
+
+  @override
+  State<_GroupsTab> createState() => _GroupsTabState();
+}
+
+class _GroupsTabState extends State<_GroupsTab> {
+  List<GroupChat> _groups = [];
+  bool _isLoading = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadGroups();
+  }
+
+  Future<void> _loadGroups() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final data = await context.read<ApiService>().getGroupChats();
+      if (mounted) {
+        setState(() {
+          _groups = (data as List).map((e) => GroupChat.fromJson(e)).toList();
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AsyncStateBuilder(
+      isLoading: _isLoading,
+      error: _error,
+      isEmpty: _groups.isEmpty && !_isLoading,
+      emptyMessage: 'Henüz bir gruba dahil değilsiniz',
+      onRetry: _loadGroups,
+      child: RefreshIndicator(
+        onRefresh: _loadGroups,
+        child: ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: _groups.length,
+          itemBuilder: (context, index) {
+            final group = _groups[index];
+            return Card(
+              margin: const EdgeInsets.only(bottom: 12),
+              child: ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: AppTheme.primaryOrange,
+                  child: Icon(Icons.group, color: Colors.white),
+                ),
+                title: Text(group.name,
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text(group.description ?? 'Sürüş grubu'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => GroupChatScreen(
+                        groupId: group.id,
+                        groupName: group.name,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}

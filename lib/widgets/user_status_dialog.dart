@@ -74,8 +74,8 @@ class _UserStatusDialogState extends State<UserStatusDialog> {
       final apiService = ApiService();
       await apiService.updateUserStatus(
         message: _selectedMessage,
-        customText: _customTextController.text.trim().isEmpty 
-            ? null 
+        customText: _customTextController.text.trim().isEmpty
+            ? null
             : _customTextController.text.trim(),
       );
 
@@ -117,15 +117,15 @@ class _UserStatusDialogState extends State<UserStatusDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
+            const Row(
               children: [
                 Icon(
                   Icons.info_outline,
                   color: AppTheme.primaryOrange,
                   size: 28,
                 ),
-                const SizedBox(width: 12),
-                const Text(
+                SizedBox(width: 12),
+                Text(
                   'Durumunu Seç',
                   style: TextStyle(
                     fontSize: 22,
@@ -143,7 +143,7 @@ class _UserStatusDialogState extends State<UserStatusDialog> {
               ),
             ),
             const SizedBox(height: 24),
-            
+
             // Status options
             ...List.generate(_statuses.length, (index) {
               final status = _statuses[index];
@@ -161,12 +161,12 @@ class _UserStatusDialogState extends State<UserStatusDialog> {
                   child: Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: isSelected 
+                      color: isSelected
                           ? AppTheme.primaryOrange.withOpacity(0.1)
                           : AppTheme.lightGrey,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: isSelected 
+                        color: isSelected
                             ? AppTheme.primaryOrange
                             : Colors.transparent,
                         width: 2,
@@ -192,17 +192,17 @@ class _UserStatusDialogState extends State<UserStatusDialog> {
                             status['label'] as String,
                             style: TextStyle(
                               fontSize: 16,
-                              fontWeight: isSelected 
-                                  ? FontWeight.bold 
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
                                   : FontWeight.normal,
-                              color: isSelected 
+                              color: isSelected
                                   ? AppTheme.primaryOrange
                                   : Colors.white,
                             ),
                           ),
                         ),
                         if (isSelected)
-                          Icon(
+                          const Icon(
                             Icons.check_circle,
                             color: AppTheme.primaryOrange,
                           ),
@@ -238,7 +238,8 @@ class _UserStatusDialogState extends State<UserStatusDialog> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 TextButton(
-                  onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
+                  onPressed:
+                      _isLoading ? null : () => Navigator.of(context).pop(),
                   child: const Text('İptal'),
                 ),
                 const SizedBox(width: 12),
@@ -261,7 +262,8 @@ class _UserStatusDialogState extends State<UserStatusDialog> {
                           height: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.black),
                           ),
                         )
                       : const Text(
