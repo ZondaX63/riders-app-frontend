@@ -27,6 +27,7 @@ class _RidersMapScreenState extends State<RidersMapScreen> {
   final MapController _mapController = MapController();
   late final LocationService _locationService;
   late final ApiService _apiService;
+  late final SocketService _socketService;
 
   List<dynamic> _nearbyRiders = [];
   LatLng _currentCenter = _defaultCenter;
@@ -40,8 +41,9 @@ class _RidersMapScreenState extends State<RidersMapScreen> {
   @override
   void initState() {
     super.initState();
-    _apiService = ApiService();
-    _locationService = LocationService(_apiService);
+    _apiService = context.read<ApiService>();
+    _locationService = context.read<LocationService>();
+    _socketService = context.read<SocketService>();
     _initialize();
 
     // Defer socket setup until after build
@@ -59,10 +61,9 @@ class _RidersMapScreenState extends State<RidersMapScreen> {
   }
 
   void _unsubscribeFromAll() {
-    final socketService = context.read<SocketService>();
     for (var rider in _nearbyRiders) {
       final userId = rider['user']['id'] ?? rider['user']['_id'];
-      socketService.unsubscribeFromLocation(userId);
+      _socketService.unsubscribeFromLocation(userId);
     }
   }
 
@@ -111,14 +112,8 @@ class _RidersMapScreenState extends State<RidersMapScreen> {
           _myPosition = position;
           _currentCenter = LatLng(position.latitude, position.longitude);
         });
-        // Move map after widget is built
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          try {
-            _mapController.move(_currentCenter, _defaultZoom);
-          } catch (e) {
-            print('Error moving map: $e');
-          }
-        });
+        // Map will pick up _currentCenter via initialCenter property
+        // No need to call _mapController.move here as it might not be rendered yet
       }
 
       // Load nearby riders
@@ -223,7 +218,8 @@ class _RidersMapScreenState extends State<RidersMapScreen> {
         try {
           _mapController.move(_currentCenter, _defaultZoom);
         } catch (e) {
-          print('Error moving map: $e');
+          // If map is not ready, it will fail, which is expected if user clicks too fast
+          debugPrint('Map not ready for move: $e');
         }
         await _loadNearbyRiders();
       }

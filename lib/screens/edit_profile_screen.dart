@@ -73,7 +73,7 @@ class _EditProfileScreenState extends State<EditProfileScreen>
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
     try {
-      final apiService = ApiService();
+      final apiService = context.read<ApiService>();
 
       // Prepare motorcycle info
       Map<String, dynamic>? motorcycleInfo;

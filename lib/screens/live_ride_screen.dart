@@ -25,6 +25,8 @@ class LiveRideScreen extends StatefulWidget {
 
 class _LiveRideScreenState extends State<LiveRideScreen> {
   late final MapController _mapController;
+  late final SocketService _socketService;
+  late final WebRTCService _webRTCService;
   final Map<String, LatLng> _memberLocations = {};
   bool _isVoiceActive = false;
   bool _isMuted = false;
@@ -34,15 +36,14 @@ class _LiveRideScreenState extends State<LiveRideScreen> {
   void initState() {
     super.initState();
     _mapController = MapController();
+    _socketService = context.read<SocketService>();
+    _webRTCService = context.read<WebRTCService>();
     _subscribeToSocketEvents();
   }
 
   void _subscribeToSocketEvents() {
-    final socketService = context.read<SocketService>();
-    final webRTCService = context.read<WebRTCService>();
-
     // Listen for location updates
-    socketService.locationSharedStream.listen((data) {
+    _socketService.locationSharedStream.listen((data) {
       if (data['groupId'] == widget.groupId && data['location'] != null) {
         final userId = data['userId'];
         final loc = data['location'];
@@ -58,7 +59,7 @@ class _LiveRideScreenState extends State<LiveRideScreen> {
     });
 
     // Listen for voice participants
-    webRTCService.participantsStream.listen((participants) {
+    _webRTCService.participantsStream.listen((participants) {
       if (mounted) {
         setState(() {
           _voiceParticipants = participants;
@@ -68,11 +69,10 @@ class _LiveRideScreenState extends State<LiveRideScreen> {
   }
 
   Future<void> _toggleVoice() async {
-    final webRTCService = context.read<WebRTCService>();
     if (_isVoiceActive) {
-      await webRTCService.leaveChannel();
+      await _webRTCService.leaveChannel();
     } else {
-      await webRTCService.joinChannel(widget.groupId);
+      await _webRTCService.joinChannel(widget.groupId);
     }
     setState(() {
       _isVoiceActive = !_isVoiceActive;
@@ -81,8 +81,7 @@ class _LiveRideScreenState extends State<LiveRideScreen> {
   }
 
   void _toggleMute() {
-    final webRTCService = context.read<WebRTCService>();
-    webRTCService.toggleMute();
+    _webRTCService.toggleMute();
     setState(() {
       _isMuted = !_isMuted;
     });
@@ -91,7 +90,7 @@ class _LiveRideScreenState extends State<LiveRideScreen> {
   @override
   void dispose() {
     if (_isVoiceActive) {
-      context.read<WebRTCService>().leaveChannel();
+      _webRTCService.leaveChannel();
     }
     super.dispose();
   }

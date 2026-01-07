@@ -26,9 +26,30 @@ class RidersRoute {
   });
 
   factory RidersRoute.fromJson(Map<String, dynamic> json) {
+    // Handle user field - it might be populated or just an ID
+    User user;
+    final userData = json['user'];
+
+    if (userData is Map<String, dynamic>) {
+      user = User.fromJson(userData);
+    } else if (userData is String) {
+      user = User(
+        id: userData,
+        username: 'Unknown',
+        email: '',
+        followers: [],
+        following: [],
+        role: 'user',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+    } else {
+      user = User.empty();
+    }
+
     return RidersRoute(
       id: json['id'] ?? json['_id'],
-      user: User.fromJson(json['user']),
+      user: user,
       name: json['name'] ?? '',
       description: json['description'],
       waypoints: (json['waypoints'] as List<dynamic>?)

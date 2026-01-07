@@ -4,7 +4,7 @@ import '../models/chat.dart';
 import '../models/message.dart';
 
 /// Chat API Service
-/// 
+///
 /// SRP: Sadece chat ve messaging işlemlerinden sorumlu
 /// - Get Chats
 /// - Send/Delete Messages
@@ -76,7 +76,7 @@ class ChatApiService extends BaseApiService {
 
   Future<void> markChatAsRead(String chatId) async {
     try {
-      await dio.post('$baseUrl/chats/$chatId/read');
+      await dio.put('$baseUrl/chats/$chatId/read');
     } on DioException catch (e) {
       log('DioException in markChatAsRead: ${e.message}');
     }
@@ -138,7 +138,8 @@ class ChatApiService extends BaseApiService {
       }
 
       // backend may return the conversation under 'chat' or 'conversation'
-      final convoData = response.data['data']['chat'] ?? response.data['data']['conversation'];
+      final convoData = response.data['data']['chat'] ??
+          response.data['data']['conversation'];
       if (convoData == null) {
         throw Exception('Invalid chat data received from server');
       }

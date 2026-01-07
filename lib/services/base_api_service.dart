@@ -92,14 +92,32 @@ abstract class BaseApiService {
 
   String buildStaticUrl(String path) {
     if (path.isEmpty) return '';
-    if (path.startsWith('http')) {
-      return path; // Return as-is if it's already a full URL
+
+    // Fix localhost data lingering from dev
+    if (path.contains('localhost:5000')) {
+      final cleanPath =
+          path.replaceAll(RegExp(r'http?://localhost:5000/?'), '');
+      return buildStaticUrl(cleanPath);
     }
 
-    final normalized = path.replaceAll('\\', '/');
-    final withPrefix =
-        normalized.startsWith('uploads/') ? normalized : 'uploads/$normalized';
-    return '${staticBaseUrl()}/$withPrefix';
+    if (path.startsWith('http')) {
+      return path;
+    }
+
+    // Clean absolute paths from server
+    String normalized = path.replaceAll('\\', '/');
+    if (normalized.contains('/uploads/')) {
+      normalized = normalized.split('/uploads/').last;
+    } else if (normalized.contains('uploads/')) {
+      normalized = normalized.split('uploads/').last;
+    }
+
+    // Remove any leading slash
+    if (normalized.startsWith('/')) {
+      normalized = normalized.substring(1);
+    }
+
+    return '${staticBaseUrl()}/uploads/$normalized';
   }
 
   Future<String> getToken() async {

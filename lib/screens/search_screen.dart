@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../services/api_service.dart';
 import '../models/user.dart';
 import 'user_profile_screen.dart';
@@ -11,14 +12,20 @@ class SearchScreen extends StatefulWidget {
 }
 
 class _SearchScreenState extends State<SearchScreen> {
-  final ApiService _apiService = ApiService();
+  late final ApiService _apiService;
   final TextEditingController _searchController = TextEditingController();
   List<User> _searchResults = [];
   bool _isLoading = false;
   String? _error;
 
+  @override
+  void initState() {
+    super.initState();
+    _apiService = context.read<ApiService>();
+  }
+
   String _getProfilePictureUrl(String? profilePicture) =>
-      ApiService().buildStaticUrl(profilePicture ?? '');
+      _apiService.buildStaticUrl(profilePicture ?? '');
 
   Future<void> _searchUsers(String query) async {
     if (query.isEmpty) {
@@ -36,15 +43,19 @@ class _SearchScreenState extends State<SearchScreen> {
 
     try {
       final results = await _apiService.searchUsers(query);
-      setState(() {
-        _searchResults = results;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _searchResults = results;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -74,7 +85,9 @@ class _SearchScreenState extends State<SearchScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(child: Text(_error!, style: const TextStyle(color: Colors.red)))
+              ? Center(
+                  child:
+                      Text(_error!, style: const TextStyle(color: Colors.red)))
               : _searchResults.isEmpty
                   ? Center(
                       child: Text(
@@ -88,7 +101,8 @@ class _SearchScreenState extends State<SearchScreen> {
                       itemCount: _searchResults.length,
                       itemBuilder: (context, index) {
                         final user = _searchResults[index];
-                        final profilePictureUrl = _getProfilePictureUrl(user.profilePicture);
+                        final profilePictureUrl =
+                            _getProfilePictureUrl(user.profilePicture);
                         return ListTile(
                           leading: CircleAvatar(
                             backgroundImage: profilePictureUrl.isNotEmpty
@@ -104,7 +118,8 @@ class _SearchScreenState extends State<SearchScreen> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => UserProfileScreen(userId: user.id),
+                                builder: (context) =>
+                                    UserProfileScreen(userId: user.id),
                               ),
                             );
                           },
@@ -113,7 +128,4 @@ class _SearchScreenState extends State<SearchScreen> {
                     ),
     );
   }
-} 
-
-
-
+}

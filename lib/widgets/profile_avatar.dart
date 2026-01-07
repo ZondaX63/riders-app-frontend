@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 
 /// Reusable Profile Avatar Widget
-/// 
+///
 /// Kullanıcı profil fotoğrafını gösterir.
 /// NetworkImage cache yönetimi ile performans.
 class ProfileAvatar extends StatelessWidget {
@@ -24,18 +25,42 @@ class ProfileAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final apiService = ApiService();
+    // Try to get from provider, fallback to new instance if needed
+    ApiService apiService;
+    try {
+      apiService = context.read<ApiService>();
+    } catch (_) {
+      apiService = ApiService();
+    }
+
     final avatarUrl = profilePicture != null && profilePicture!.isNotEmpty
         ? apiService.buildStaticUrl(profilePicture!)
         : null;
 
-    final avatar = CircleAvatar(
-      radius: radius,
-      backgroundColor: AppTheme.lightGrey,
-      backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
-      child: avatarUrl == null
-          ? Icon(Icons.person, size: radius * 0.8, color: Colors.grey)
-          : null,
+    final avatar = Container(
+      width: radius * 2,
+      height: radius * 2,
+      decoration: const BoxDecoration(
+        color: AppTheme.lightGrey,
+        shape: BoxShape.circle,
+      ),
+      child: ClipOval(
+        child: avatarUrl != null
+            ? Image.network(
+                avatarUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Center(
+                    child: Icon(Icons.person,
+                        size: radius * 0.8, color: Colors.grey),
+                  );
+                },
+              )
+            : Center(
+                child:
+                    Icon(Icons.person, size: radius * 0.8, color: Colors.grey),
+              ),
+      ),
     );
 
     if (showBorder) {

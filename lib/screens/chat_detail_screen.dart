@@ -20,7 +20,7 @@ class ChatDetailScreen extends StatefulWidget {
 }
 
 class _ChatDetailScreenState extends State<ChatDetailScreen> {
-  final ApiService _apiService = ApiService();
+  late final ApiService _apiService;
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   List<Message> _messages = [];
@@ -31,6 +31,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   @override
   void initState() {
     super.initState();
+    _apiService = context.read<ApiService>();
     _loadMessages();
   }
 

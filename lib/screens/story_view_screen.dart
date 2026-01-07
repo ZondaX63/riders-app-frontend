@@ -62,7 +62,10 @@ class _StoryViewScreenState extends State<StoryViewScreen> {
         _markAsViewed();
       });
     } else {
-      Navigator.pop(context);
+      _timer?.cancel();
+      if (mounted && Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
     }
   }
 
@@ -83,6 +86,11 @@ class _StoryViewScreenState extends State<StoryViewScreen> {
   Future<void> _markAsViewed() async {
     try {
       final story = widget.stories[_currentIndex];
+      final currentUser = await context.read<ApiService>().getCurrentUser();
+
+      // Do not mark as viewed if it's my own story
+      if (story.user.id == currentUser.id) return;
+
       await context.read<ApiService>().viewStory(story.id);
     } catch (e) {
       debugPrint('Error marking story as viewed: $e');
@@ -142,7 +150,8 @@ class _StoryViewScreenState extends State<StoryViewScreen> {
                             value: index < _currentIndex
                                 ? 1.0
                                 : (index == _currentIndex ? _progress : 0.0),
-                            backgroundColor: Colors.white.withValues(alpha: 0.3),
+                            backgroundColor:
+                                Colors.white.withValues(alpha: 0.3),
                             valueColor: const AlwaysStoppedAnimation<Color>(
                                 Colors.white),
                             minHeight: 2,

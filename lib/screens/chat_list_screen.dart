@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/chat.dart';
 import '../services/api_service.dart';
 import 'chat_detail_screen.dart';
@@ -11,7 +12,7 @@ class ChatListScreen extends StatefulWidget {
 }
 
 class _ChatListScreenState extends State<ChatListScreen> {
-  final ApiService _apiService = ApiService();
+  late final ApiService _apiService;
   List<Chat> _chats = [];
   bool _isLoading = true;
   String? _error;
@@ -19,6 +20,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
   @override
   void initState() {
     super.initState();
+    _apiService = context.read<ApiService>();
     _loadChats();
   }
 
@@ -63,8 +65,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.search),
-            onPressed: () {
-            },
+            onPressed: () {},
           ),
         ],
       ),
@@ -113,7 +114,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => ChatDetailScreen(chat: chat),
+                                  builder: (context) =>
+                                      ChatDetailScreen(chat: chat),
                                 ),
                               );
                             },
@@ -141,7 +143,9 @@ class ChatListItem extends StatelessWidget {
       onTap: onTap,
       leading: CircleAvatar(
         radius: 30,
-        backgroundImage: chat.otherUserAvatar != null ? NetworkImage(chat.otherUserAvatar!) : null,
+        backgroundImage: chat.otherUserAvatar != null
+            ? NetworkImage(chat.otherUserAvatar!)
+            : null,
         child: chat.otherUserAvatar == null
             ? Text(
                 chat.otherUserFullName[0].toUpperCase(),
@@ -212,7 +216,4 @@ class ChatListItem extends StatelessWidget {
       return '${time.day.toString().padLeft(2, '0')}/${time.month.toString().padLeft(2, '0')}';
     }
   }
-} 
-
-
-
+}

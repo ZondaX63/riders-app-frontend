@@ -31,11 +31,32 @@ class GroupChat {
   });
 
   factory GroupChat.fromJson(Map<String, dynamic> json) {
+    // Handle creator field - it might be populated or just an ID
+    User creator;
+    final creatorData = json['creator'];
+
+    if (creatorData is Map<String, dynamic>) {
+      creator = User.fromJson(creatorData);
+    } else if (creatorData is String) {
+      creator = User(
+        id: creatorData,
+        username: 'Unknown',
+        email: '',
+        followers: [],
+        following: [],
+        role: 'user',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+    } else {
+      creator = User.empty();
+    }
+
     return GroupChat(
       id: json['id'] ?? json['_id'],
       name: json['name'] ?? '',
       description: json['description'],
-      creator: User.fromJson(json['creator']),
+      creator: creator,
       members: (json['members'] as List<dynamic>?)
               ?.map((e) => GroupMember.fromJson(e))
               .toList() ??
@@ -70,8 +91,29 @@ class GroupMember {
   });
 
   factory GroupMember.fromJson(Map<String, dynamic> json) {
+    // Handle user field - it might be populated or just an ID
+    User user;
+    final userData = json['user'];
+
+    if (userData is Map<String, dynamic>) {
+      user = User.fromJson(userData);
+    } else if (userData is String) {
+      user = User(
+        id: userData,
+        username: 'Unknown',
+        email: '',
+        followers: [],
+        following: [],
+        role: 'user',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+    } else {
+      user = User.empty();
+    }
+
     return GroupMember(
-      user: User.fromJson(json['user']),
+      user: user,
       role: json['role'] ?? 'member',
       joinedAt: DateTime.parse(json['joinedAt']),
     );
@@ -96,9 +138,32 @@ class GroupMessage {
   });
 
   factory GroupMessage.fromJson(Map<String, dynamic> json) {
+    // Handle sender field - it might be populated or just an ID
+    User sender;
+    final senderData = json['sender'];
+
+    if (senderData is Map<String, dynamic>) {
+      sender = User.fromJson(senderData);
+    } else if (senderData is String) {
+      // Fallback for unpopulated sender - create minimal user
+      sender = User(
+        id: senderData,
+        username: 'Unknown',
+        email: '',
+        followers: [],
+        following: [],
+        role: 'user',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+    } else {
+      // Last resort fallback
+      sender = User.empty();
+    }
+
     return GroupMessage(
       id: json['id'] ?? json['_id'],
-      sender: User.fromJson(json['sender']),
+      sender: sender,
       content: json['content'] ?? '',
       type: json['type'] ?? 'text',
       location: json['location'] != null

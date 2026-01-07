@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/group_chat.dart';
+import '../models/user.dart';
 import '../services/api_service.dart';
 import '../providers/auth_provider.dart';
 import '../theme/app_theme.dart';
@@ -57,9 +59,17 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     });
   }
 
+  late SocketService _socketService;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _socketService = context.read<SocketService>();
+  }
+
   @override
   void dispose() {
-    context.read<SocketService>().leaveGroup(widget.groupId);
+    _socketService.leaveGroup(widget.groupId);
     _socketSubscription?.cancel();
     _messageController.dispose();
     _scrollController.dispose();
@@ -78,19 +88,14 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
       final apiService = context.read<ApiService>();
       final currentUser = context.read<AuthProvider>().currentUser;
 
-      final groupData = await apiService.getGroupChat(widget.groupId);
-      _groupDetail = GroupChat.fromJson(groupData);
+      _groupDetail = await apiService.getGroupChat(widget.groupId);
 
       _isMember =
           _groupDetail!.members.any((m) => m.user.id == currentUser?.id);
 
       if (_isMember) {
         final messagesData = await apiService.getGroupMessages(widget.groupId);
-        _messages = (messagesData as List)
-            .map((e) => GroupMessage.fromJson(e))
-            .toList()
-            .reversed
-            .toList();
+        _messages = messagesData.reversed.toList();
         _setupSocket();
       }
 
@@ -129,8 +134,21 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
       }
     } catch (e) {
       if (mounted) {
+        String errorMessage = 'Katılma hatası';
+        if (e is DioException) {
+          final data = e.response?.data;
+          if (data is Map && data['error'] != null) {
+            errorMessage = data['error']['message'] ?? errorMessage;
+          }
+        } else {
+          errorMessage = e.toString();
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Katılma hatası: $e')),
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+          ),
         );
         setState(() => _isLoading = false);
       }
@@ -180,7 +198,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     if (_groupDetail == null) return;
 
     final newStatus =
-        _groupDetail!.rideStatus == 'in-progress' ? 'completed' : 'in-progress';
+        _groupDetail!.rideStatus == 'active' ? 'completed' : 'active';
 
     try {
       await context
@@ -191,7 +209,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text(newStatus == 'in-progress'
+              content: Text(newStatus == 'active'
                   ? 'Sürüş başladı!'
                   : 'Sürüş tamamlandı!')),
         );
@@ -225,12 +243,12 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
               context.read<AuthProvider>().currentUser?.id)
             IconButton(
               icon: Icon(
-                  _groupDetail?.rideStatus == 'in-progress'
+                  _groupDetail?.rideStatus == 'active'
                       ? Icons.stop_circle
                       : Icons.play_circle,
                   color: AppTheme.primaryOrange),
               onPressed: _toggleRideStatus,
-              tooltip: _groupDetail?.rideStatus == 'in-progress'
+              tooltip: _groupDetail?.rideStatus == 'active'
                   ? 'Sürüşü Bitir'
                   : 'Sürüşü Başlat',
             ),
@@ -474,9 +492,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
             IconButton(
               icon:
                   const Icon(Icons.location_on, color: AppTheme.primaryOrange),
-              onPressed: () {
-                // TODO: Implement share location
-              },
+              onPressed: () {},
             ),
             Expanded(
               child: TextField(
@@ -505,7 +521,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
 
   Future<void> _showInviteDialog() async {
     final searchController = TextEditingController();
-    List<dynamic> searchResults = [];
+    // Change List<dynamic> to List<User> to match ApiService return type
+    List<User> searchResults = [];
     bool isSearching = false;
 
     showDialog(
@@ -554,11 +571,11 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                         final user = searchResults[index];
                         return ListTile(
                           leading: ProfileAvatar(
-                            profilePicture: user['profilePicture'],
+                            profilePicture: user.profilePicture,
                             radius: 16,
                           ),
-                          title: Text(user['fullName'] ?? user['username']),
-                          subtitle: Text('@${user['username']}'),
+                          title: Text(user.fullName ?? user.username),
+                          subtitle: Text('@${user.username}'),
                           trailing: IconButton(
                             icon: const Icon(Icons.add_circle,
                                 color: AppTheme.primaryOrange),
@@ -567,12 +584,12 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                                 await context
                                     .read<ApiService>()
                                     .groupChats
-                                    .addMember(widget.groupId, user['id']);
+                                    .addMember(widget.groupId, user.id);
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                         content: Text(
-                                            '${user['username']} davet edildi')),
+                                            '${user.username} davet edildi')),
                                   );
                                 }
                               } catch (e) {

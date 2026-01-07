@@ -5,6 +5,7 @@ import 'config/logger_config.dart';
 import 'providers/auth_provider.dart';
 import 'services/api_service.dart';
 import 'services/storage_service.dart';
+import 'services/location_service.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
@@ -57,6 +58,9 @@ class _MyAppState extends State<MyApp> {
       providers: [
         Provider<ApiService>(
           create: (_) => ApiService(),
+        ),
+        ProxyProvider<ApiService, LocationService>(
+          update: (_, api, __) => LocationService(api),
         ),
         Provider<StorageService>(
           create: (_) => StorageService(),

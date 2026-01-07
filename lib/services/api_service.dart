@@ -8,7 +8,15 @@ import 'notification_api_service.dart';
 import 'story_api_service.dart';
 import 'route_api_service.dart';
 import 'group_chat_api_service.dart';
+import '../models/group_chat.dart';
 import '../models/message.dart';
+import '../models/user.dart';
+import '../models/post.dart';
+import '../models/chat.dart';
+import '../models/comment.dart';
+import '../models/map_pin.dart';
+import '../models/route.dart';
+import '../models/story.dart';
 import 'base_api_service.dart';
 
 /// Unified API Service - Facade Pattern
@@ -52,39 +60,42 @@ class ApiService extends BaseApiService {
   Future<void> logout() => auth.logout();
 
   // User methods
-  Future getCurrentUser() => users.getCurrentUser();
-  Future getUser(String userId) => users.getUser(userId);
-  Future updateProfile(String fullName, String bio,
+  Future<User> getCurrentUser() => users.getCurrentUser();
+  Future<User> getUser(String userId) => users.getUser(userId);
+  Future<User> updateProfile(String fullName, String bio,
           [Map<String, dynamic>? motorcycleInfo]) =>
       users.updateProfile(fullName, bio, motorcycleInfo);
-  Future updateProfilePicture(String imagePath) =>
+  Future<User> updateProfilePicture(String imagePath) =>
       users.updateProfilePicture(imagePath);
   Future<void> followUser(String userId) => users.followUser(userId);
   Future<void> unfollowUser(String userId) => users.unfollowUser(userId);
-  Future searchUsers(String query) => users.searchUsers(query);
-  Future updateUserStatus({required String message, String? customText}) =>
+  Future<List<User>> searchUsers(String query) => users.searchUsers(query);
+  Future<User> updateUserStatus(
+          {required String message, String? customText}) =>
       users.updateUserStatus(message: message, customText: customText);
 
   // Post methods
-  Future getPosts() => posts.getPosts();
-  Future getExplorePosts({int limit = 20, int offset = 0}) =>
+  Future<List<Post>> getPosts() => posts.getPosts();
+  Future<List<Post>> getExplorePosts({int limit = 20, int offset = 0}) =>
       posts.getExplorePosts(limit: limit, offset: offset);
-  Future createPost(String? content, List<String> images) =>
+  Future<Post> createPost(String? content, List<String> images) =>
       posts.createPost(content, images);
   Future<void> likePost(String postId) => posts.likePost(postId);
   Future<void> unlikePost(String postId) => posts.unlikePost(postId);
   Future<void> addComment(String postId, String content) =>
       posts.addComment(postId, content);
-  Future getComments(String postId) => posts.getComments(postId);
+  Future<List<Comment>> getComments(String postId) => posts.getComments(postId);
   Future<void> createComment(String postId, String content) =>
       posts.createComment(postId, content);
   Future<void> deleteComment(String postId, String commentId) =>
       posts.deleteComment(postId, commentId);
 
   // Chat methods
-  Future getChats() => chats.getChats();
-  Future getChatMessages(String chatId) => chats.getChatMessages(chatId);
-  Future sendMessage(String chatId, String content, MessageType type) =>
+  Future<List<Chat>> getChats() => chats.getChats();
+  Future<List<Message>> getChatMessages(String chatId) =>
+      chats.getChatMessages(chatId);
+  Future<Message> sendMessage(
+          String chatId, String content, MessageType type) =>
       chats.sendMessage(chatId, content, type);
   Future<void> markChatAsRead(String chatId) => chats.markChatAsRead(chatId);
   Future<void> deleteMessage(
@@ -95,11 +106,11 @@ class ApiService extends BaseApiService {
       chats.reactToMessage(chatId, messageId, reaction);
   Future<void> muteChat(String chatId, bool mute) =>
       chats.muteChat(chatId, mute);
-  Future getOrCreateChat(String userId) => chats.getOrCreateChat(userId);
+  Future<Chat> getOrCreateChat(String userId) => chats.getOrCreateChat(userId);
   Future<void> deleteChat(String chatId) => chats.deleteChat(chatId);
 
   // MapPin methods
-  Future createMapPin({
+  Future<MapPin> createMapPin({
     required double latitude,
     required double longitude,
     required String type,
@@ -118,7 +129,7 @@ class ApiService extends BaseApiService {
         expiresAt: expiresAt,
       );
 
-  Future getNearbyMapPins({
+  Future<List<MapPin>> getNearbyMapPins({
     required double latitude,
     required double longitude,
     int radius = 5000,
@@ -133,7 +144,7 @@ class ApiService extends BaseApiService {
         types: types,
       );
 
-  Future getMyMapPins() => mapPins.getMyMapPins();
+  Future<List<MapPin>> getMyMapPins() => mapPins.getMyMapPins();
   Future<void> deleteMapPin(String pinId) => mapPins.deleteMapPin(pinId);
 
   // Location methods
@@ -179,25 +190,27 @@ class ApiService extends BaseApiService {
   Future getMyLocation() => locations.getMyLocation();
 
   // Story methods
-  Future getStories({int limit = 20, int offset = 0}) =>
+  Future<List<Story>> getStories({int limit = 20, int offset = 0}) =>
       stories.getStories(limit: limit, offset: offset);
-  Future createStory(
+  Future<Story> createStory(
           {required String mediaPath,
           required String mediaType,
           int duration = 24}) =>
       stories.createStory(
           mediaPath: mediaPath, mediaType: mediaType, duration: duration);
   Future<void> viewStory(String storyId) => stories.viewStory(storyId);
-  Future getStoryViews(String storyId, {int limit = 20, int offset = 0}) =>
+  Future<List<User>> getStoryViews(String storyId,
+          {int limit = 20, int offset = 0}) =>
       stories.getStoryViews(storyId, limit: limit, offset: offset);
 
   // Route methods
-  Future getPublicRoutes({int limit = 20, int offset = 0}) =>
+  Future<List<RidersRoute>> getPublicRoutes({int limit = 20, int offset = 0}) =>
       routes.getPublicRoutes(limit: limit, offset: offset);
-  Future getUserRoutes(String userId, {int limit = 20, int offset = 0}) =>
+  Future<List<RidersRoute>> getUserRoutes(String userId,
+          {int limit = 20, int offset = 0}) =>
       routes.getUserRoutes(userId, limit: limit, offset: offset);
-  Future getRoute(String routeId) => routes.getRoute(routeId);
-  Future createRoute({
+  Future<RidersRoute> getRoute(String routeId) => routes.getRoute(routeId);
+  Future<RidersRoute> createRoute({
     required String name,
     String? description,
     required List<Map<String, dynamic>> waypoints,
@@ -214,15 +227,16 @@ class ApiService extends BaseApiService {
   Future<void> deleteRoute(String routeId) => routes.deleteRoute(routeId);
 
   // GroupChat methods
-  Future getGroupChats() => groupChats.getGroupChats();
+  Future<List<GroupChat>> getGroupChats() => groupChats.getGroupChats();
   Future createGroupChat(
           {required String name,
           String? description,
           bool isPrivate = false}) =>
       groupChats.createGroupChat(
           name: name, description: description, isPrivate: isPrivate);
-  Future getGroupChat(String id) => groupChats.getGroupChat(id);
-  Future getGroupMessages(String id, {int limit = 50, DateTime? before}) =>
+  Future<GroupChat> getGroupChat(String id) => groupChats.getGroupChat(id);
+  Future<List<GroupMessage>> getGroupMessages(String id,
+          {int limit = 50, DateTime? before}) =>
       groupChats.getGroupMessages(id, limit: limit, before: before);
   Future sendGroupMessage(
           {required String groupId,

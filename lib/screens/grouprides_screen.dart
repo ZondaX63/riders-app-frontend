@@ -207,7 +207,7 @@ class _GroupsTabState extends State<_GroupsTab> {
       final data = await context.read<ApiService>().getGroupChats();
       if (mounted) {
         setState(() {
-          _groups = (data as List).map((e) => GroupChat.fromJson(e)).toList();
+          _groups = data;
         });
       }
     } catch (e) {
@@ -251,8 +251,8 @@ class _GroupsTabState extends State<_GroupsTab> {
                     style: const TextStyle(fontWeight: FontWeight.bold)),
                 subtitle: Text(group.description ?? 'Sürüş grubu'),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  Navigator.push(
+                onTap: () async {
+                  await Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => GroupChatScreen(
@@ -261,6 +261,7 @@ class _GroupsTabState extends State<_GroupsTab> {
                       ),
                     ),
                   );
+                  _loadGroups();
                 },
               ),
             );

@@ -32,8 +32,7 @@ class RouteCard extends StatelessWidget {
                   CircleAvatar(
                     radius: 16,
                     backgroundImage: route.user.profilePicture != null
-                        ? NetworkImage(route.user
-                            .profilePicture!) // TODO: Use API service for full URL if needed
+                        ? NetworkImage(route.user.profilePicture!)
                         : null,
                     child: route.user.profilePicture == null
                         ? const Icon(Icons.person, size: 16)

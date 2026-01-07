@@ -82,12 +82,13 @@ class _HomeScreenState extends State<HomeScreen>
 
     try {
       final posts = await _apiService.getPosts();
-      final following =
-          context.read<AuthProvider>().currentUser?.following ?? [];
+      final currentUser = context.read<AuthProvider>().currentUser;
+      final following = currentUser?.following ?? [];
 
-      // Filter posts ONLY from followed users (excluding current user)
+      // Include posts from followed users AND the current user
       final filteredPosts = posts.where((post) {
-        return following.contains(post.user?.id);
+        return following.contains(post.user?.id) ||
+            post.user?.id == currentUser?.id;
       }).toList();
 
       if (mounted) {
@@ -242,8 +243,10 @@ class _HomeScreenState extends State<HomeScreen>
                     Icon(
                       Icons.error_outline,
                       size: 64,
-                      color:
-                          Theme.of(context).colorScheme.error.withValues(alpha: 0.5),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .error
+                          .withValues(alpha: 0.5),
                     ),
                     const SizedBox(height: 16),
                     Text(

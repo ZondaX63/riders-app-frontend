@@ -6,6 +6,7 @@ import '../services/api_service.dart';
 import '../models/post.dart';
 import '../theme/app_theme.dart';
 import 'edit_profile_screen.dart';
+import '../models/route.dart';
 import '../widgets/user_status_dialog.dart';
 
 class ModernProfileScreen extends StatefulWidget {
@@ -16,17 +17,19 @@ class ModernProfileScreen extends StatefulWidget {
 }
 
 class _ModernProfileScreenState extends State<ModernProfileScreen> {
-  final ApiService _apiService = ApiService();
+  late final ApiService _apiService;
   bool _isLoading = false;
   String? _error;
   int _routeCount = 0;
+  double _totalDistance = 0.0;
   List<Post> _userPosts = [];
-  List<dynamic> _userRoutes = [];
-  int _selectedTab = 0; // 0: Past Rides, 1: Routes, 2: Achievements
+  List<RidersRoute> _userRoutes = [];
+  int _selectedTab = 0; // 0: Posts, 1: Rides, 2: Achievements
 
   @override
   void initState() {
     super.initState();
+    _apiService = context.read<ApiService>();
     _loadUserData();
   }
 
@@ -49,13 +52,20 @@ class _ModernProfileScreenState extends State<ModernProfileScreen> {
       final postMaps = await _apiService.getUserPosts(current.id);
       final userPosts = postMaps.map((m) => Post.fromJson(m)).toList();
 
-      final routes = await _apiService.getUserRoutes(current.id);
+      final List<RidersRoute> routes =
+          await _apiService.getUserRoutes(current.id);
+
+      double totalDistance = 0.0;
+      for (var route in routes) {
+        totalDistance += route.distance;
+      }
 
       if (!mounted) return;
       setState(() {
         _userPosts = userPosts;
-        _userRoutes = routes as List;
-        _routeCount = _userRoutes.length;
+        _userRoutes = routes;
+        _routeCount = routes.length;
+        _totalDistance = totalDistance;
       });
     } catch (e) {
       setState(() => _error = e.toString());
@@ -200,7 +210,8 @@ class _ModernProfileScreenState extends State<ModernProfileScreen> {
                             color: AppTheme.lightGrey,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: AppTheme.primaryOrange.withValues(alpha: 0.3),
+                              color:
+                                  AppTheme.primaryOrange.withValues(alpha: 0.3),
                             ),
                           ),
                           child: Row(
@@ -208,8 +219,8 @@ class _ModernProfileScreenState extends State<ModernProfileScreen> {
                               Container(
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color:
-                                      AppTheme.primaryOrange.withValues(alpha: 0.2),
+                                  color: AppTheme.primaryOrange
+                                      .withValues(alpha: 0.2),
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(
@@ -297,7 +308,9 @@ class _ModernProfileScreenState extends State<ModernProfileScreen> {
                             value: '${user.followers.length}',
                             label: 'Followers'),
                         const SizedBox(width: 8),
-                        const _StatCard(value: '0', label: 'Distance'),
+                        _StatCard(
+                            value: _totalDistance.toStringAsFixed(1),
+                            label: 'Distance'),
                       ]),
                     ),
                     const SizedBox(height: 12),
@@ -325,11 +338,11 @@ class _ModernProfileScreenState extends State<ModernProfileScreen> {
                                   color: Colors.white.withValues(alpha: 0.1)))),
                       child: Row(children: [
                         _TabButton(
-                            text: 'Past Rides',
+                            text: 'Posts',
                             selected: _selectedTab == 0,
                             onTap: () => setState(() => _selectedTab = 0)),
                         _TabButton(
-                            text: 'Routes',
+                            text: 'Rides',
                             selected: _selectedTab == 1,
                             onTap: () => setState(() => _selectedTab = 1)),
                         _TabButton(
@@ -341,9 +354,9 @@ class _ModernProfileScreenState extends State<ModernProfileScreen> {
                     Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: _selectedTab == 0
-                          ? _RidesGrid(posts: _userPosts)
+                          ? _PostsGrid(posts: _userPosts)
                           : _selectedTab == 1
-                              ? _RoutesList(
+                              ? _RidesList(
                                   routes: _userRoutes,
                                   onDelete: (id) async {
                                     try {
@@ -472,7 +485,8 @@ class _MotorcycleCard extends StatelessWidget {
                       Text(
                         'Motor fotoğrafı eklenmemiş',
                         style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
+                            color: Colors.white.withValues(alpha: 0.5),
+                            fontSize: 12),
                       ),
                     ],
                   ),
@@ -561,9 +575,9 @@ class _TabButton extends StatelessWidget {
   }
 }
 
-class _RidesGrid extends StatelessWidget {
+class _PostsGrid extends StatelessWidget {
   final List<Post> posts;
-  const _RidesGrid({required this.posts});
+  const _PostsGrid({required this.posts});
 
   @override
   Widget build(BuildContext context) {
@@ -643,17 +657,17 @@ class _AchievementsPlaceholder extends StatelessWidget {
   }
 }
 
-class _RoutesList extends StatelessWidget {
-  final List<dynamic> routes;
+class _RidesList extends StatelessWidget {
+  final List<RidersRoute> routes;
   final Function(String) onDelete;
 
-  const _RoutesList({required this.routes, required this.onDelete});
+  const _RidesList({required this.routes, required this.onDelete});
 
   @override
   Widget build(BuildContext context) {
     if (routes.isEmpty) {
       return const Center(
-          child: Text('Henüz rota oluşturmadınız',
+          child: Text('Henüz sürüş kaydı yok',
               style: TextStyle(color: Colors.white70)));
     }
 
@@ -669,19 +683,29 @@ class _RoutesList extends StatelessWidget {
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           child: ListTile(
-            leading: const Icon(Icons.map, color: AppTheme.primaryOrange),
-            title: Text(route['name'] ?? 'İsimsiz Rota',
+            leading: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.two_wheeler, color: AppTheme.primaryOrange),
+                Text(
+                  '${route.distance.toStringAsFixed(1)}km',
+                  style: const TextStyle(fontSize: 10, color: Colors.white70),
+                ),
+              ],
+            ),
+            title: Text(route.name.isNotEmpty ? route.name : 'İsimsiz Sürüş',
                 style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text('${(route['waypoints'] as List).length} durak'),
+            subtitle: Text(
+                '${route.waypoints.length} durak • ${route.createdAt.toLocal().toIso8601String().substring(0, 10)}'),
             trailing: IconButton(
               icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
               onPressed: () {
                 showDialog(
                   context: context,
                   builder: (ctx) => AlertDialog(
-                    title: const Text('Rotayı Sil'),
+                    title: const Text('Sürüşü Sil'),
                     content: const Text(
-                        'Bu rotayı silmek istediğinize emin misiniz?'),
+                        'Bu sürüş kaydını silmek istediğinize emin misiniz?'),
                     actions: [
                       TextButton(
                           onPressed: () => Navigator.pop(ctx),
@@ -689,7 +713,7 @@ class _RoutesList extends StatelessWidget {
                       TextButton(
                         onPressed: () {
                           Navigator.pop(ctx);
-                          onDelete(route['id'] ?? route['_id']);
+                          onDelete(route.id);
                         },
                         child: const Text('Sil',
                             style: TextStyle(color: Colors.red)),

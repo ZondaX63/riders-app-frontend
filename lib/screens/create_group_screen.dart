@@ -58,8 +58,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
       if (mounted) {
         final currentUserId = context.read<AuthProvider>().currentUser?.id;
         setState(() {
-          _searchResults = (results as List)
-              .map((data) => User.fromJson(data))
+          _searchResults = results
               .where((u) => u.id != currentUserId)
               .where(
                   (u) => !_selectedUsers.any((selected) => selected.id == u.id))

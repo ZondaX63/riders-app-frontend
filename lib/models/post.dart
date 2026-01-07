@@ -1,4 +1,5 @@
 import 'user.dart';
+import 'comment.dart';
 import '../utils/url_utils.dart';
 
 class Post {
@@ -34,7 +35,8 @@ class Post {
     // Fix comment users' profile picture URLs
     if (json['comments'] != null) {
       for (var comment in json['comments']) {
-        if (comment['user'] != null && comment['user']['profilePicture'] != null) {
+        if (comment['user'] != null &&
+            comment['user']['profilePicture'] != null) {
           comment['user']['profilePicture'] =
               UrlUtils.buildStaticUrl(comment['user']['profilePicture']);
         }
@@ -58,8 +60,9 @@ class Post {
       images: images,
       likes: List<String>.from(json['likes'] ?? []),
       comments: (json['comments'] as List<dynamic>?)
-          ?.map((comment) => Comment.fromJson(comment))
-          .toList() ?? [],
+              ?.map((comment) => Comment.fromJson(comment))
+              .toList() ??
+          [],
       createdAt: DateTime.parse(json['createdAt']),
       updatedAt: DateTime.parse(json['updatedAt']),
     );
@@ -79,35 +82,3 @@ class Post {
     };
   }
 }
-
-class Comment {
-  final String id;
-  final String content;
-  final DateTime createdAt;
-  final User user;
-
-  Comment({
-    required this.id,
-    required this.content,
-    required this.createdAt,
-    required this.user,
-  });
-
-  factory Comment.fromJson(Map<String, dynamic> json) {
-    return Comment(
-      id: json['_id'],
-      content: json['content'],
-      createdAt: DateTime.parse(json['createdAt']),
-      user: User.fromJson(json['user']),
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      '_id': id,
-      'content': content,
-      'createdAt': createdAt.toIso8601String(),
-      'user': user.toJson(),
-    };
-  }
-} 

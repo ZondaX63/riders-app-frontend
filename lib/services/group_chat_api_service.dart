@@ -1,10 +1,13 @@
 import 'base_api_service.dart';
+import '../models/group_chat.dart';
 
 class GroupChatApiService extends BaseApiService {
-  Future<List<dynamic>> getGroupChats() async {
+  Future<List<GroupChat>> getGroupChats() async {
     try {
       final response = await dio.get('/group-chats');
-      return response.data['data'];
+      return (response.data['data'] as List)
+          .map((e) => GroupChat.fromJson(e))
+          .toList();
     } catch (e) {
       rethrow;
     }
@@ -27,16 +30,16 @@ class GroupChatApiService extends BaseApiService {
     }
   }
 
-  Future<Map<String, dynamic>> getGroupChat(String id) async {
+  Future<GroupChat> getGroupChat(String id) async {
     try {
       final response = await dio.get('/group-chats/$id');
-      return response.data['data'];
+      return GroupChat.fromJson(response.data['data']);
     } catch (e) {
       rethrow;
     }
   }
 
-  Future<List<dynamic>> getGroupMessages(String id,
+  Future<List<GroupMessage>> getGroupMessages(String id,
       {int limit = 50, DateTime? before}) async {
     try {
       final response =
@@ -44,7 +47,9 @@ class GroupChatApiService extends BaseApiService {
         'limit': limit,
         if (before != null) 'before': before.toIso8601String(),
       });
-      return response.data['data'];
+      return (response.data['data'] as List)
+          .map((e) => GroupMessage.fromJson(e))
+          .toList();
     } catch (e) {
       rethrow;
     }

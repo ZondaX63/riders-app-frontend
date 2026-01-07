@@ -76,7 +76,6 @@ class RouteDetailsScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.share),
             onPressed: () {
-              // TODO: Implement share dialog
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Paylaşma özelliği yakında!')),
               );
