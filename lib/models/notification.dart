@@ -29,8 +29,8 @@ class AppNotification {
       fromUser: User.fromJson(json['fromUser'] ?? {}),
       content: json['content'] ?? '',
       read: json['read'] ?? false,
-      relatedPost: json['relatedPost'] != null 
-          ? Post.fromJson(json['relatedPost']) 
+      relatedPost: (json['relatedPost'] is Map<String, dynamic>)
+          ? Post.fromJson(json['relatedPost'])
           : null,
       relatedRoute: json['relatedRoute']?.toString(),
       createdAt: json['createdAt'] != null

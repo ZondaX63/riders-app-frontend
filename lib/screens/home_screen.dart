@@ -164,6 +164,42 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  Future<void> _confirmDeletePost(String postId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Postu Sil'),
+        content: const Text('Bu postu silmek istediğinize emin misiniz?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('İptal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Sil', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await _apiService.deletePost(postId);
+        _loadPosts();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Hata: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -342,6 +378,10 @@ class _HomeScreenState extends State<HomeScreen>
                                   ),
                                 );
                               }
+                            : null,
+                        onDelete: post.user?.id ==
+                                context.read<AuthProvider>().currentUser?.id
+                            ? () => _confirmDeletePost(post.id)
                             : null,
                       );
                     },

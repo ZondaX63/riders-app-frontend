@@ -101,6 +101,62 @@ class _ModernProfileScreenState extends State<ModernProfileScreen> {
     }
   }
 
+  Future<void> _pickMotorcyclePhoto() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+    if (image == null) return;
+
+    try {
+      await _apiService.updateMotorcyclePicture(image.path);
+      await _loadUserData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Motor fotoğrafı güncellendi')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Hata: $e')));
+      }
+    }
+  }
+
+  Future<void> _confirmDeletePost(String postId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Postu Sil'),
+        content: const Text('Bu postu silmek istediğinize emin misiniz?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('İptal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Sil', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await _apiService.deletePost(postId);
+        await _loadUserData();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Hata: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().currentUser;
@@ -325,7 +381,9 @@ class _ModernProfileScreenState extends State<ModernProfileScreen> {
                         description: user.bio?.isNotEmpty == true
                             ? user.bio!
                             : 'Sürüşlerim için kullandığım motosiklet.',
-                        motorcyclePhoto: user.motorcycleInfo?['photo'],
+                        motorcyclePhoto: user.motorcycleInfo?['photo'] ??
+                            user.motorcycleInfo?['imageUrl'],
+                        onAddPhoto: _pickMotorcyclePhoto,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -354,7 +412,10 @@ class _ModernProfileScreenState extends State<ModernProfileScreen> {
                     Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: _selectedTab == 0
-                          ? _PostsGrid(posts: _userPosts)
+                          ? _PostsGrid(
+                              posts: _userPosts,
+                              onDelete: _confirmDeletePost,
+                            )
                           : _selectedTab == 1
                               ? _RidesList(
                                   routes: _userRoutes,
@@ -427,12 +488,14 @@ class _MotorcycleCard extends StatelessWidget {
   final String? year;
   final String description;
   final String? motorcyclePhoto;
+  final VoidCallback? onAddPhoto;
 
   const _MotorcycleCard({
     required this.title,
     this.year,
     required this.description,
     this.motorcyclePhoto,
+    this.onAddPhoto,
   });
 
   @override
@@ -505,37 +568,45 @@ class _MotorcycleCard extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
+                    Expanded(
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           if (year != null && year!.isNotEmpty)
                             Text(year!,
                                 style: const TextStyle(color: Colors.white70)),
                           Text(description,
-                              style: const TextStyle(color: Colors.white70)),
-                        ]),
+                              style: const TextStyle(color: Colors.white70),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 2),
+                        ],
+                      ),
+                    ),
                     TextButton(
                       style: TextButton.styleFrom(
                           backgroundColor: AppTheme.primaryOrange,
                           foregroundColor: Colors.black,
                           shape: const StadiumBorder(),
                           padding: const EdgeInsets.symmetric(horizontal: 16)),
-                      onPressed: () {
-                        showDialog(
-                          context: context,
-                          builder: (ctx) => AlertDialog(
-                            title: const Text('Teknik Bilgiler'),
-                            content:
-                                const Text('Özellikler yakında eklenecek.'),
-                            actions: [
-                              TextButton(
-                                  onPressed: () => Navigator.of(ctx).pop(),
-                                  child: const Text('Kapat'))
-                            ],
-                          ),
-                        );
-                      },
-                      child: const Text('View Specs'),
+                      onPressed: onAddPhoto ??
+                          () {
+                            showDialog(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: const Text('Teknik Bilgiler'),
+                                content:
+                                    const Text('Özellikler yakında eklenecek.'),
+                                actions: [
+                                  TextButton(
+                                      onPressed: () => Navigator.of(ctx).pop(),
+                                      child: const Text('Kapat'))
+                                ],
+                              ),
+                            );
+                          },
+                      child: Text(onAddPhoto != null
+                          ? 'Motor Fotoğrafı Ekle'
+                          : 'View Specs'),
                     ),
                   ],
                 ),
@@ -577,7 +648,9 @@ class _TabButton extends StatelessWidget {
 
 class _PostsGrid extends StatelessWidget {
   final List<Post> posts;
-  const _PostsGrid({required this.posts});
+  final Function(String)? onDelete;
+
+  const _PostsGrid({required this.posts, this.onDelete});
 
   @override
   Widget build(BuildContext context) {
@@ -601,39 +674,64 @@ class _PostsGrid extends StatelessWidget {
         final post = posts[index];
         final image = post.images.isNotEmpty ? post.images.first : null;
         final title = post.description?.split('\n').first ?? 'Paylaşım';
-        return ClipRect(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              AspectRatio(
-                aspectRatio: 1,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: image != null
-                      ? Image.network(image, fit: BoxFit.cover)
-                      : Container(
-                          color: AppTheme.lightGrey,
-                          child:
-                              const Icon(Icons.image, color: Colors.white54)),
+        return Stack(
+          children: [
+            ClipRect(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  AspectRatio(
+                    aspectRatio: 1,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: image != null
+                          ? Image.network(image, fit: BoxFit.cover)
+                          : Container(
+                              color: AppTheme.lightGrey,
+                              child: const Icon(Icons.image,
+                                  color: Colors.white54)),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Expanded(
+                    child: Text(title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                  const SizedBox(height: 2),
+                  Expanded(
+                    child: Text(
+                        post.createdAt
+                            .toLocal()
+                            .toIso8601String()
+                            .substring(0, 10),
+                        style: const TextStyle(
+                            color: Colors.white70, fontSize: 12),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis),
+                  ),
+                ],
+              ),
+            ),
+            if (onDelete != null)
+              Positioned(
+                top: 4,
+                right: 4,
+                child: GestureDetector(
+                  onTap: () => onDelete!(post.id),
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: Colors.black54,
+                      shape: BoxShape.circle,
+                    ),
+                    child:
+                        const Icon(Icons.delete, color: Colors.red, size: 20),
+                  ),
                 ),
               ),
-              const SizedBox(height: 6),
-              Expanded(
-                child: Text(title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
-              ),
-              const SizedBox(height: 2),
-              Expanded(
-                child: Text(
-                    post.createdAt.toLocal().toIso8601String().substring(0, 10),
-                    style: const TextStyle(color: Colors.white70, fontSize: 12),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
-              ),
-            ],
-          ),
+          ],
         );
       },
     );

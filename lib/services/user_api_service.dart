@@ -248,4 +248,56 @@ class UserApiService extends BaseApiService {
       rethrow;
     }
   }
+
+  Future<User> updateMotorcyclePicture(String imagePath) async {
+    try {
+      final token = await getToken();
+
+      var request = http.MultipartRequest(
+        'PUT',
+        Uri.parse('$baseUrl/users/me/motorcycle-picture'),
+      );
+
+      request.headers['Authorization'] = 'Bearer $token';
+
+      if (kIsWeb) {
+        final xFile = XFile(imagePath);
+        final bytes = await xFile.readAsBytes();
+        final filename = xFile.name.isNotEmpty ? xFile.name : 'motor.jpg';
+
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'motorcyclePicture',
+            bytes,
+            filename: filename,
+            contentType: MediaType('image', 'jpeg'),
+          ),
+        );
+      } else {
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            'motorcyclePicture',
+            imagePath,
+            contentType: MediaType('image', 'jpeg'),
+          ),
+        );
+      }
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to update motor picture');
+      }
+
+      final data = Map<String, dynamic>.from(
+        await dio.get('$baseUrl/users/me').then((r) => r.data),
+      );
+
+      return User.fromJson(data['data']['user']);
+    } catch (e) {
+      log('Exception in updateMotorcyclePicture: $e');
+      throw Exception('Failed to update motor picture');
+    }
+  }
 }

@@ -215,4 +215,16 @@ class PostApiService extends BaseApiService {
       throw Exception('Failed to delete comment');
     }
   }
+
+  Future<void> deletePost(String postId) async {
+    try {
+      final response = await dio.delete('$baseUrl/posts/$postId');
+      if (!response.data['success']) {
+        throw Exception('Failed to delete post');
+      }
+    } on DioException catch (e) {
+      log('DioException in deletePost: ${e.message}');
+      throw Exception('Failed to delete post');
+    }
+  }
 }

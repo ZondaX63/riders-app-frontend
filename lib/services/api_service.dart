@@ -253,6 +253,11 @@ class ApiService extends BaseApiService {
   Future<List<Map<String, dynamic>>> getUserPosts(String userId) =>
       users.getUserPosts(userId);
 
+  Future<void> deletePost(String postId) => posts.deletePost(postId);
+
+  Future<User> updateMotorcyclePicture(String path) =>
+      users.updateMotorcyclePicture(path);
+
   Future<void> addGroupMember(String groupId, String userId) =>
       groupChats.addMember(groupId, userId);
   Future<void> removeGroupMember(String groupId, String userId) =>

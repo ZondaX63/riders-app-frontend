@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class PostCard extends StatelessWidget {
@@ -16,6 +15,7 @@ class PostCard extends StatelessWidget {
   final VoidCallback onComment;
   final VoidCallback onShare;
   final VoidCallback? onProfileTap;
+  final VoidCallback? onDelete;
 
   const PostCard({
     super.key,
@@ -33,9 +33,10 @@ class PostCard extends StatelessWidget {
     required this.onComment,
     required this.onShare,
     this.onProfileTap,
+    this.onDelete,
   });
 
-  Widget _buildImageGrid(List<String> images) {
+  Widget _buildImageGrid(BuildContext context, List<String> images) {
     if (images.isEmpty) return const SizedBox.shrink();
 
     return Container(
@@ -45,29 +46,30 @@ class PostCard extends StatelessWidget {
         child: images.length == 1
             ? AspectRatio(
                 aspectRatio: 16 / 9,
-                child: Image.network(
-                  images[0],
-                  fit: BoxFit.cover,
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return Container(
-                      color: Colors.grey[200],
-                      child: const Center(
-                        child: CircularProgressIndicator(),
+                child: GestureDetector(
+                  onTap: () => _showFullScreenImage(context, images[0]),
+                  child: Hero(
+                    tag: images[0],
+                    child: Image.network(
+                      images[0],
+                      fit: BoxFit.cover,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Container(
+                          color: Colors.grey[200],
+                          child: const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        color: Colors.grey[200],
+                        child: const Center(
+                            child:
+                                Icon(Icons.error_outline, color: Colors.red)),
                       ),
-                    );
-                  },
-                  errorBuilder: (context, error, stackTrace) {
-                    if (kDebugMode) {
-                      debugPrint('Error loading image: $error');
-                    }
-                    return Container(
-                      color: Colors.grey[200],
-                      child: const Center(
-                        child: Icon(Icons.error_outline, color: Colors.red),
-                      ),
-                    );
-                  },
+                    ),
+                  ),
                 ),
               )
             : GridView.builder(
@@ -83,29 +85,31 @@ class PostCard extends StatelessWidget {
                 itemBuilder: (context, index) {
                   return AspectRatio(
                     aspectRatio: 1,
-                    child: Image.network(
-                      images[index],
-                      fit: BoxFit.cover,
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return Container(
-                          color: Colors.grey[200],
-                          child: const Center(
-                            child: CircularProgressIndicator(),
+                    child: GestureDetector(
+                      onTap: () => _showFullScreenImage(context, images[index]),
+                      child: Hero(
+                        tag: images[index],
+                        child: Image.network(
+                          images[index],
+                          fit: BoxFit.cover,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Container(
+                              color: Colors.grey[200],
+                              child: const Center(
+                                child: CircularProgressIndicator(),
+                              ),
+                            );
+                          },
+                          errorBuilder: (context, error, stackTrace) =>
+                              Container(
+                            color: Colors.grey[200],
+                            child: const Center(
+                                child: Icon(Icons.error_outline,
+                                    color: Colors.red)),
                           ),
-                        );
-                      },
-                      errorBuilder: (context, error, stackTrace) {
-                        if (kDebugMode) {
-                          debugPrint('Error loading image: $error');
-                        }
-                        return Container(
-                          color: Colors.grey[200],
-                          child: const Center(
-                            child: Icon(Icons.error_outline, color: Colors.red),
-                          ),
-                        );
-                      },
+                        ),
+                      ),
                     ),
                   );
                 },
@@ -124,25 +128,41 @@ class PostCard extends StatelessWidget {
           ListTile(
             onTap: onProfileTap,
             leading: CircleAvatar(
-              backgroundImage: profilePicture != null
-                  ? NetworkImage(profilePicture!)
-                  : null,
-              child: profilePicture == null
-                  ? const Icon(Icons.person)
-                  : null,
+              backgroundImage:
+                  profilePicture != null ? NetworkImage(profilePicture!) : null,
+              child: profilePicture == null ? const Icon(Icons.person) : null,
             ),
             title: Text(username),
             subtitle: Text(
               _formatDate(createdAt),
               style: Theme.of(context).textTheme.bodySmall,
             ),
+            trailing: onDelete != null
+                ? PopupMenuButton<String>(
+                    onSelected: (value) {
+                      if (value == 'delete') onDelete!();
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete, color: Colors.red),
+                            SizedBox(width: 8),
+                            Text('Sil', style: TextStyle(color: Colors.red)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  )
+                : null,
           ),
           if (description.isNotEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Text(description),
             ),
-          _buildImageGrid(images),
+          _buildImageGrid(context, images),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: OverflowBar(
@@ -189,5 +209,27 @@ class PostCard extends StatelessWidget {
     } else {
       return 'şimdi';
     }
+  }
+
+  void _showFullScreenImage(BuildContext context, String imageUrl) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.black,
+            iconTheme: const IconThemeData(color: Colors.white),
+          ),
+          body: Center(
+            child: InteractiveViewer(
+              child: Hero(
+                tag: imageUrl,
+                child: Image.network(imageUrl),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
