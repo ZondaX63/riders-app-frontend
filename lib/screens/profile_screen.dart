@@ -103,7 +103,11 @@ class _ModernProfileScreenState extends State<ModernProfileScreen> {
 
   Future<void> _pickMotorcyclePhoto() async {
     final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+    final XFile? image = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1200,
+      imageQuality: 85,
+    );
     if (image == null) return;
 
     try {

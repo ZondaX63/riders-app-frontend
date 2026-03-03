@@ -113,7 +113,11 @@ class UserApiService extends BaseApiService {
         // Web için: XFile'dan bytes okuyarak ekle
         final xFile = XFile(imagePath);
         final bytes = await xFile.readAsBytes();
-        final filename = xFile.name.isNotEmpty ? xFile.name : 'profile.jpg';
+        var filename = xFile.name.isNotEmpty ? xFile.name : 'profile.jpg';
+        if (filename.toLowerCase().endsWith('.heic')) {
+          filename = filename.replaceAll(
+              RegExp(r'\.heic$', caseSensitive: false), '.jpg');
+        }
 
         request.files.add(
           http.MultipartFile.fromBytes(
@@ -263,7 +267,11 @@ class UserApiService extends BaseApiService {
       if (kIsWeb) {
         final xFile = XFile(imagePath);
         final bytes = await xFile.readAsBytes();
-        final filename = xFile.name.isNotEmpty ? xFile.name : 'motor.jpg';
+        var filename = xFile.name.isNotEmpty ? xFile.name : 'motor.jpg';
+        if (filename.toLowerCase().endsWith('.heic')) {
+          filename = filename.replaceAll(
+              RegExp(r'\.heic$', caseSensitive: false), '.jpg');
+        }
 
         request.files.add(
           http.MultipartFile.fromBytes(
